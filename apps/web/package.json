@@ -7,24 +7,27 @@
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@mikumon/shared-types": "workspace:*",
     "@mikumon/validation": "workspace:*",
     "@nuxt/ui": "^2.18.0",
     "@pinia/nuxt": "^0.5.4",
+    "@vee-validate/zod": "^4.13.0",
     "@vueuse/nuxt": "^11.0.0",
+    "echarts": "^5.5.0",
     "nuxt": "^3.13.0",
     "pinia": "^2.2.0",
     "vee-validate": "^4.13.0",
-    "@vee-validate/zod": "^4.13.0",
-    "zod": "^3.23.0",
-    "echarts": "^5.5.0",
-    "vue-echarts": "^7.0.0"
+    "vue-echarts": "^7.0.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@nuxt/eslint": "^0.5.0",
+    "@playwright/test": "^1.60.0",
     "typescript": "^5.5.0"
   }
 }

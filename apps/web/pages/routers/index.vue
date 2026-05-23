@@ -16,7 +16,7 @@ interface RouterRow {
   createdAt: string
 }
 
-const { data, refresh } = await useAsyncData('routers', () =>
+const { data, pending, refresh } = await useAsyncData('routers', () =>
   $api<{ data: RouterRow[]; pagination: any }>('/routers?limit=100'),
 )
 const routers = computed(() => data.value?.data ?? [])
@@ -98,8 +98,20 @@ async function testConnection(router: RouterRow) {
   }
 }
 
+const confirmDelete = ref<RouterRow | null>(null)
+const confirmDeleteOpen = computed({
+  get: () => !!confirmDelete.value,
+  set: (v: boolean) => { if (!v) confirmDelete.value = null },
+})
+
 async function deleteRouter(router: RouterRow) {
-  if (!confirm(`Hapus router "${router.name}"?`)) return
+  confirmDelete.value = router
+}
+
+async function doDelete() {
+  const router = confirmDelete.value
+  if (!router) return
+  confirmDelete.value = null
   deleting.value = router.id
   try {
     await $api(`/routers/${router.id}`, { method: 'DELETE' })
@@ -111,6 +123,7 @@ async function deleteRouter(router: RouterRow) {
     deleting.value = null
   }
 }
+
 
 const columns = [
   { key: 'name', label: 'Nama' },
@@ -138,7 +151,18 @@ function formatDate(d: string | null) {
     </div>
 
     <UCard>
-      <UTable :columns="columns" :rows="routers">
+      <div v-if="pending" class="space-y-3 p-2">
+        <USkeleton v-for="i in 4" :key="i" class="h-10 w-full" />
+      </div>
+
+      <div v-else-if="!routers.length" class="flex flex-col items-center justify-center py-16 text-gray-400">
+        <UIcon name="i-heroicons-server" class="w-12 h-12 mb-3" />
+        <p class="font-medium">Belum ada router</p>
+        <p class="text-sm mt-1">Tambah router MikroTik untuk mulai mengelola hotspot</p>
+        <UButton class="mt-4" icon="i-heroicons-plus" size="sm" @click="openAdd">Tambah Router</UButton>
+      </div>
+
+      <UTable v-else :columns="columns" :rows="routers">
         <template #name-data="{ row }">
           <div class="flex items-center gap-2">
             <span class="font-medium">{{ row.name }}</span>
@@ -189,6 +213,25 @@ function formatDate(d: string | null) {
         </template>
       </UTable>
     </UCard>
+
+    <!-- Confirm Delete Modal -->
+    <UModal v-model="confirmDeleteOpen" :ui="{ width: 'sm:max-w-sm' }">
+      <UCard>
+        <template #header>
+          <p class="font-semibold text-red-600">Hapus Router</p>
+        </template>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Hapus router <span class="font-semibold">{{ confirmDelete?.name }}</span>?
+          Semua profil dan user hotspot yang terhubung akan ikut terhapus.
+        </p>
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <UButton color="gray" variant="ghost" @click="confirmDelete = null">Batal</UButton>
+            <UButton color="red" :loading="!!deleting" @click="doDelete">Hapus</UButton>
+          </div>
+        </template>
+      </UCard>
+    </UModal>
 
     <!-- Add/Edit Modal -->
     <UModal v-model="isOpen">

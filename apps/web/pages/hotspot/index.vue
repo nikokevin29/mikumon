@@ -125,12 +125,23 @@ async function generate() {
 
 // Delete
 const deleting = ref(false)
+const confirmDelete = ref<HotspotUser | null>(null)
+const confirmDeleteOpen = computed({
+  get: () => !!confirmDelete.value,
+  set: (v: boolean) => { if (!v) confirmDelete.value = null },
+})
 
 async function deleteUser(user: HotspotUser) {
-  if (!confirm(`Hapus user "${user.username}"?`)) return
+  confirmDelete.value = user
+}
+
+async function doDelete() {
+  const user = confirmDelete.value
+  if (!user) return
+  confirmDelete.value = null
   try {
     await $api(`/hotspot/users/${user.id}`, { method: 'DELETE' })
-    toast.add({ title: 'User berhasil dihapus', color: 'green', icon: 'i-heroicons-check-circle' })
+    toast.add({ title: `User ${user.username} berhasil dihapus`, color: 'green', icon: 'i-heroicons-check-circle' })
     await refresh()
   } catch (e: any) {
     toast.add({ title: e?.data?.error?.message ?? 'Gagal menghapus user', color: 'red', icon: 'i-heroicons-x-circle' })
@@ -232,42 +243,64 @@ const activeOptions = [
     </div>
 
     <UCard>
-      <UTable v-model="selected" :columns="columns" :rows="users">
-        <template #username-data="{ row }">
-          <span class="font-mono font-medium">{{ row.username }}</span>
-        </template>
+      <div v-if="!users.length" class="flex flex-col items-center justify-center py-16 text-gray-400">
+        <UIcon name="i-heroicons-wifi" class="w-12 h-12 mb-3" />
+        <p class="font-medium">Tidak ada user ditemukan</p>
+        <p class="text-sm mt-1">Coba ubah filter atau generate user baru</p>
+      </div>
 
-        <template #isActive-data="{ row }">
-          <UBadge :color="row.isActive ? 'green' : 'gray'" variant="soft" size="xs">
-            {{ row.isActive ? 'Aktif' : 'Nonaktif' }}
-          </UBadge>
-        </template>
+      <template v-else>
+        <UTable v-model="selected" :columns="columns" :rows="users">
+          <template #username-data="{ row }">
+            <span class="font-mono font-medium">{{ row.username }}</span>
+          </template>
 
-        <template #createdAt-data="{ row }">
-          <span class="text-sm text-gray-500">{{ formatDate(row.createdAt) }}</span>
-        </template>
+          <template #isActive-data="{ row }">
+            <UBadge :color="row.isActive ? 'green' : 'gray'" variant="soft" size="xs">
+              {{ row.isActive ? 'Aktif' : 'Nonaktif' }}
+            </UBadge>
+          </template>
 
-        <template #actions-data="{ row }">
-          <div class="flex justify-end">
-            <UButton
-              icon="i-heroicons-trash"
-              size="xs"
-              color="red"
-              variant="ghost"
-              @click="deleteUser(row)"
-            />
+          <template #createdAt-data="{ row }">
+            <span class="text-sm text-gray-500">{{ formatDate(row.createdAt) }}</span>
+          </template>
+
+          <template #actions-data="{ row }">
+            <div class="flex justify-end">
+              <UButton
+                icon="i-heroicons-trash"
+                size="xs"
+                color="red"
+                variant="ghost"
+                @click="deleteUser(row)"
+              />
+            </div>
+          </template>
+        </UTable>
+
+        <div v-if="pagination && pagination.pages > 1" class="flex justify-center mt-4 pb-2">
+          <UPagination v-model="page" :page-count="limit" :total="pagination.total" />
+        </div>
+      </template>
+    </UCard>
+
+    <!-- Confirm Delete Modal -->
+    <UModal v-model="confirmDeleteOpen" :ui="{ width: 'sm:max-w-sm' }">
+      <UCard>
+        <template #header>
+          <p class="font-semibold text-red-600">Hapus User</p>
+        </template>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Hapus user <span class="font-mono font-semibold">{{ confirmDelete?.username }}</span>?
+        </p>
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <UButton color="gray" variant="ghost" @click="confirmDelete = null">Batal</UButton>
+            <UButton color="red" @click="doDelete">Hapus</UButton>
           </div>
         </template>
-      </UTable>
-
-      <div v-if="pagination && pagination.pages > 1" class="flex justify-center mt-4 pb-2">
-        <UPagination
-          v-model="page"
-          :page-count="limit"
-          :total="pagination.total"
-        />
-      </div>
-    </UCard>
+      </UCard>
+    </UModal>
 
     <!-- Generate Modal -->
     <UModal v-model="generateOpen">

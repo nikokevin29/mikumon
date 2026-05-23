@@ -39,7 +39,7 @@ watch(routerOptions, (opts) => {
   }
 }, { immediate: true })
 
-const { data: profileData, refresh } = await useAsyncData(
+const { data: profileData, pending: profilePending, refresh } = await useAsyncData(
   'profiles',
   () => {
     const q = selectedRouterId.value ? `?router_id=${selectedRouterId.value}&limit=100` : '?limit=100'
@@ -54,6 +54,11 @@ const isOpen = ref(false)
 const editingProfile = ref<Profile | null>(null)
 const saving = ref(false)
 const deleting = ref<number | null>(null)
+const confirmDelete = ref<Profile | null>(null)
+const confirmDeleteOpen = computed({
+  get: () => !!confirmDelete.value,
+  set: (v: boolean) => { if (!v) confirmDelete.value = null },
+})
 
 const form = reactive({
   routerId: 0,
@@ -139,7 +144,13 @@ async function save() {
 }
 
 async function deleteProfile(p: Profile) {
-  if (!confirm(`Hapus profile "${p.name}"?`)) return
+  confirmDelete.value = p
+}
+
+async function doDelete() {
+  const p = confirmDelete.value
+  if (!p) return
+  confirmDelete.value = null
   deleting.value = p.id
   try {
     await $api(`/profiles/${p.id}`, { method: 'DELETE' })
@@ -198,7 +209,23 @@ function formatRp(val: string | null) {
     </div>
 
     <UCard>
-      <UTable :columns="columns" :rows="profiles">
+      <div v-if="profilePending" class="space-y-3 p-2">
+        <USkeleton v-for="i in 4" :key="i" class="h-10 w-full" />
+      </div>
+
+      <div v-else-if="!selectedRouterId" class="flex flex-col items-center justify-center py-16 text-gray-400">
+        <UIcon name="i-heroicons-server" class="w-12 h-12 mb-3" />
+        <p class="font-medium">Pilih router terlebih dahulu</p>
+      </div>
+
+      <div v-else-if="!profiles.length" class="flex flex-col items-center justify-center py-16 text-gray-400">
+        <UIcon name="i-heroicons-user-group" class="w-12 h-12 mb-3" />
+        <p class="font-medium">Belum ada profile</p>
+        <p class="text-sm mt-1">Tambah paket hotspot untuk router ini</p>
+        <UButton class="mt-4" icon="i-heroicons-plus" size="sm" @click="openAdd">Tambah Profile</UButton>
+      </div>
+
+      <UTable v-else :columns="columns" :rows="profiles">
         <template #name-data="{ row }">
           <span class="font-medium">{{ row.name }}</span>
         </template>
@@ -234,6 +261,25 @@ function formatRp(val: string | null) {
         </template>
       </UTable>
     </UCard>
+
+    <!-- Confirm Delete Modal -->
+    <UModal v-model="confirmDeleteOpen" :ui="{ width: 'sm:max-w-sm' }">
+      <UCard>
+        <template #header>
+          <p class="font-semibold text-red-600">Hapus Profile</p>
+        </template>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Hapus profile <span class="font-semibold">{{ confirmDelete?.name }}</span>?
+          User hotspot yang menggunakan profile ini tidak akan bisa login.
+        </p>
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <UButton color="gray" variant="ghost" @click="confirmDelete = null">Batal</UButton>
+            <UButton color="red" :loading="!!deleting" @click="doDelete">Hapus</UButton>
+          </div>
+        </template>
+      </UCard>
+    </UModal>
 
     <!-- Add/Edit Modal -->
     <UModal v-model="isOpen">

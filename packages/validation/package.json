@@ -5,6 +5,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "test": "bun test src/**/*.test.ts"
+  },
   "dependencies": {
     "zod": "^3.23.0"
   },
