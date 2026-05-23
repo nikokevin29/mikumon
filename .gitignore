@@ -1,0 +1,12 @@
+node_modules/
+.turbo/
+dist/
+.output/
+.nuxt/
+.env
+.env.local
+.env.production
+*.log
+.DS_Store
+Thumbs.db
+coverage/
