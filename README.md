@@ -2,6 +2,31 @@
 
 Open-source ISP Management Platform — alternatif Mikhmon V3. Kelola router MikroTik, profil hotspot, pengguna, monitoring real-time, dan laporan penjualan voucher dalam satu dashboard.
 
+## Status Pengembangan
+
+| Modul | Status | Keterangan |
+|-------|--------|------------|
+| Auth (login/logout/session) | ✅ Selesai | JWT httpOnly cookie, 30 menit |
+| Routers CRUD | ✅ Selesai | Enkripsi AES-256-GCM, test koneksi |
+| MikroTik RouterOS API Client | ✅ Selesai | Binary protocol TCP port 8728, auth v6/v7 |
+| Router Status Real-time | ✅ Selesai | CPU, memori, uptime, board info dari MikroTik |
+| Profiles CRUD | ✅ Selesai | Limit uptime/bytes, harga, mode expired |
+| Hotspot Users — Generate Voucher | ✅ Selesai | Bulk generate, sync ke MikroTik dengan limits |
+| Hotspot Users — CRUD | ✅ Selesai | List, filter, pagination, delete, bulk delete |
+| Session Sync Service | ✅ Selesai | Polling MikroTik tiap 30 detik, detect first-use |
+| Voucher Lifecycle (usedAt/expiredAt) | ✅ Selesai | Income dicatat saat voucher diaktifkan, bukan saat generate |
+| Expiry Sync | ✅ Selesai | Deteksi voucher expired di MikroTik → update DB |
+| Dashboard | ✅ Selesai | Stat cards, router status panel, sesi aktif terbaru |
+| Sidebar Navigasi | ✅ Selesai | Collapsible, dark mode, active state |
+| Live Monitoring (WebSocket) | ✅ Selesai | Sesi aktif real-time, chart traffic |
+| Laporan Penjualan | ✅ Selesai | Revenue per hari/minggu/bulan, chart |
+| Halaman Hotspot Users | 🚧 In Progress | UI list voucher, status used/expired belum ditampilkan |
+| Halaman Profiles | 🚧 In Progress | Form tambah/edit profile ada, sync ke MikroTik belum |
+| Print Voucher | ⏳ Belum | Template cetak, export PDF/gambar |
+| PPP Management | ⏳ Belum | Kelola PPPoE secret |
+| Telegram Notifikasi | ⏳ Belum | Bot notif sesi, income, error |
+| DHCP Leases | ⏳ Belum | Tampilkan DHCP leases dari MikroTik |
+
 ## Tech Stack
 
 | Layer | Teknologi |
@@ -16,24 +41,37 @@ Open-source ISP Management Platform — alternatif Mikhmon V3. Kelola router Mik
 ## Fitur
 
 - **Auth** — Login admin, session JWT via httpOnly cookie (30 menit), auto-redirect
-- **Routers** — CRUD router MikroTik, test koneksi, enkripsi password (AES-256-GCM)
-- **Profiles** — Manajemen profil hotspot per router (harga, durasi, bandwidth)
-- **Hotspot Users** — Generate voucher bulk, print voucher, filter & pagination
+- **Routers** — CRUD router MikroTik, test koneksi real (RouterOS API), enkripsi password (AES-256-GCM)
+- **MikroTik API** — Koneksi langsung ke RouterOS via binary protocol port 8728 (mendukung v6.43+ dan v7.x)
+- **Profiles** — Manajemen profil hotspot per router (harga, durasi, bandwidth, mode expired)
+- **Hotspot Users** — Generate voucher bulk dengan limit-uptime/bytes, sync ke MikroTik
+- **Voucher Lifecycle** — Deteksi first-use via session polling, income dicatat saat aktivasi, deteksi expired otomatis
 - **Live Monitoring** — Sesi hotspot aktif real-time via WebSocket, chart traffic top-10
 - **Laporan Penjualan** — Revenue per hari/minggu/bulan, breakdown per router, bar chart
+- **Dashboard** — Stat cards berwarna, panel status router (CPU/memori/uptime), sesi terbaru, akses cepat
 
 ## Struktur Proyek
 
 ```
 mikumon/
 ├── apps/
-│   ├── api/          # Bun + Elysia REST API + WebSocket
-│   └── web/          # Nuxt 3 SPA admin panel
+│   ├── api/                    # Bun + Elysia REST API + WebSocket
+│   │   └── src/
+│   │       ├── routes/         # auth, routers, profiles, hotspot, stats, reports, ws
+│   │       ├── services/
+│   │       │   ├── mikrotik.ts       # RouterOS API binary protocol client
+│   │       │   └── session-sync.ts   # Background sync: sessions + expiry detection
+│   │       └── middleware/
+│   └── web/                    # Nuxt 3 SPA admin panel
+│       ├── components/
+│       │   └── AppSidebar.vue  # Collapsible sidebar navigasi
+│       ├── layouts/
+│       └── pages/
 ├── packages/
-│   ├── db/           # Drizzle ORM schema, migrations, seed
-│   ├── shared-types/ # TypeScript types bersama
-│   ├── validation/   # Zod schemas bersama
-│   └── utils/        # Helper: enkripsi, generator, response
+│   ├── db/                     # Drizzle ORM schema, migrations, seed
+│   ├── shared-types/           # TypeScript types bersama
+│   ├── validation/             # Zod schemas bersama
+│   └── utils/                  # Helper: enkripsi, generator, response
 ├── docker-compose.yml
 └── turbo.json
 ```
@@ -137,7 +175,9 @@ pnpm dev
 | POST | `/api/routers` | Tambah router |
 | PUT | `/api/routers/:id` | Edit router |
 | DELETE | `/api/routers/:id` | Hapus router |
-| POST | `/api/routers/:id/test` | Test koneksi MikroTik |
+| POST | `/api/routers/:id/test` | Test koneksi MikroTik (real API auth) |
+| GET | `/api/routers/:id/status` | Status real-time router (CPU, memori, uptime) |
+| GET | `/api/routers/:id/active` | Sesi aktif langsung dari MikroTik |
 
 ### Profiles
 | Method | Path | Deskripsi |
@@ -151,17 +191,39 @@ pnpm dev
 | Method | Path | Deskripsi |
 |--------|------|-----------|
 | GET | `/api/hotspot/users` | Daftar user (filter, pagination) |
-| POST | `/api/hotspot/users/generate` | Generate voucher bulk |
+| POST | `/api/hotspot/users/generate` | Generate voucher bulk + sync ke MikroTik |
+| GET | `/api/hotspot/users/:id` | Detail user |
+| PUT | `/api/hotspot/users/:id` | Update user |
 | DELETE | `/api/hotspot/users/:id` | Hapus user |
-| DELETE | `/api/hotspot/users/bulk` | Hapus bulk |
+| DELETE | `/api/hotspot/users` | Hapus bulk (`{ ids: [] }`) |
 
 ### Monitoring & Reports
 | Method | Path | Deskripsi |
 |--------|------|-----------|
-| GET | `/api/sessions` | Sesi aktif (REST) |
+| GET | `/api/sessions` | Sesi aktif dari DB (REST) |
 | WS | `/ws/traffic` | Sesi aktif real-time (WebSocket) |
 | GET | `/api/stats` | Statistik ringkasan dashboard |
 | GET | `/api/reports/sales` | Laporan penjualan (`?start=&end=&group_by=day\|week\|month`) |
+
+## Arsitektur Voucher Lifecycle
+
+Berbeda dari Mikhmon yang menyimpan semua data di MikroTik RouterOS, Mikumon menggunakan PostgreSQL sebagai sumber kebenaran dengan sinkronisasi dua arah:
+
+```
+Generate Voucher
+  └─► DB hotspot_users (username, password, profileId)
+  └─► MikroTik /ip/hotspot/user/add (+ limit-uptime, limit-bytes-total)
+
+Session Sync (tiap 30 detik)
+  └─► Poll MikroTik /ip/hotspot/active/print
+  └─► Upsert DB hotspot_active_sessions
+  └─► First-use detected → set hotspot_users.used_at
+  └─► Create salesRecords (income dicatat saat aktivasi, bukan saat generate)
+
+Expiry Sync (tiap 5 menit)
+  └─► Poll MikroTik /ip/hotspot/user/print
+  └─► User hilang dari MikroTik → set hotspot_users.is_active=false, expired_at
+```
 
 ## Deploy dengan Docker
 

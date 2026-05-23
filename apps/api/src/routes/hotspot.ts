@@ -1,9 +1,10 @@
 import { Elysia, t } from 'elysia'
-import { db, hotspotUsers, userProfiles, salesRecords } from '@mikumon/db'
+import { db, hotspotUsers, userProfiles, routers } from '@mikumon/db'
 import { generateUsersSchema, updateHotspotUserSchema, hotspotUserQuerySchema } from '@mikumon/validation'
-import { generateUserBatch, ok, paginated, err } from '@mikumon/utils'
+import { generateUserBatch, ok, paginated, err, decrypt } from '@mikumon/utils'
 import { authMiddleware } from '../middleware/auth.ts'
 import { eq, and, ilike, count, inArray } from 'drizzle-orm'
+import { connectToRouter } from '../services/mikrotik.ts'
 
 export const hotspotRoutes = new Elysia({ prefix: '/hotspot' })
   .use(authMiddleware)
@@ -78,20 +79,72 @@ export const hotspotRoutes = new Elysia({ prefix: '/hotspot' })
         )
         .returning()
 
-      // Record sales
-      await db.insert(salesRecords).values(
-        inserted.map((u) => ({
-          routerId,
-          profileId,
-          username: u.username,
-          price: profile.sellingPrice ?? profile.price,
-        })),
-      )
+      // Sales recorded at first-use (when voucher activated), NOT at generation.
+      // The sync service (session-sync.ts) creates salesRecords when usedAt is set.
+
+      // Push to MikroTik (best-effort — DB already saved)
+      let mikrotikSynced = 0
+      let mikrotikError: string | null = null
+      const [router] = await db
+        .select()
+        .from(routers)
+        .where(eq(routers.id, routerId))
+        .limit(1)
+
+      if (router) {
+        let client
+        try {
+          client = await connectToRouter(
+            router.ipAddress,
+            router.username,
+            decrypt(router.passwordEncrypted),
+            router.port ?? 8728,
+            8_000,
+          )
+
+          // Build MikroTik limit params from profile
+          const limitParams: Record<string, string> = {}
+          if (profile.limitUptimeSeconds && profile.limitUptimeSeconds > 0) {
+            limitParams['limit-uptime'] = `${profile.limitUptimeSeconds}s`
+          }
+          if (profile.limitBytesTotal && profile.limitBytesTotal > 0) {
+            limitParams['limit-bytes-total'] = String(profile.limitBytesTotal)
+          }
+          if (profile.limitBytesDown && profile.limitBytesDown > 0) {
+            limitParams['limit-bytes-in'] = String(profile.limitBytesDown)
+          }
+          if (profile.limitBytesUp && profile.limitBytesUp > 0) {
+            limitParams['limit-bytes-out'] = String(profile.limitBytesUp)
+          }
+
+          for (const u of inserted) {
+            const rawPass = generated.find((g) => g.username === u.username)!.password
+            try {
+              await client.comm('/ip/hotspot/user/add', {
+                name: u.username,
+                password: rawPass,
+                profile: profile.name,
+                comment: `mikumon-${u.id}`,
+                ...limitParams,
+              })
+              mikrotikSynced++
+            } catch {
+              // individual user may already exist — continue
+            }
+          }
+        } catch (e: any) {
+          mikrotikError = e?.message ?? 'Router tidak dapat dihubungi'
+        } finally {
+          client?.disconnect()
+        }
+      }
 
       set.status = 201
       return ok(
         {
           generated: inserted.length,
+          mikrotikSynced,
+          mikrotikError,
           users: inserted.map((u) => ({
             id: u.id,
             username: u.username,
@@ -100,7 +153,7 @@ export const hotspotRoutes = new Elysia({ prefix: '/hotspot' })
             createdAt: u.createdAt,
           })),
         },
-        `${inserted.length} user berhasil digenerate`,
+        `${inserted.length} user berhasil digenerate${mikrotikSynced ? `, ${mikrotikSynced} disync ke MikroTik` : ''}`,
       )
     },
     {

@@ -4,33 +4,7 @@ import { createRouterSchema, updateRouterSchema } from '@mikumon/validation'
 import { encrypt, decrypt, ok, paginated, err } from '@mikumon/utils'
 import { authMiddleware } from '../middleware/auth.ts'
 import { eq, count } from 'drizzle-orm'
-
-// Test MikroTik API connection
-async function testMikrotikConnection(
-  ipAddress: string,
-  port: number,
-  username: string,
-  password: string,
-): Promise<{ connected: boolean; identity?: string; version?: string; uptime?: string }> {
-  try {
-    // NodeJS-style MikroTik API connection via raw TCP
-    const net = await import('net')
-    return await new Promise((resolve) => {
-      const socket = net.createConnection({ host: ipAddress, port, timeout: 5000 })
-      socket.on('connect', () => {
-        socket.destroy()
-        resolve({ connected: true, identity: ipAddress })
-      })
-      socket.on('error', () => resolve({ connected: false }))
-      socket.on('timeout', () => {
-        socket.destroy()
-        resolve({ connected: false })
-      })
-    })
-  } catch {
-    return { connected: false }
-  }
-}
+import { connectToRouter, fetchRouterStatus, fetchActiveSessions } from '../services/mikrotik.ts'
 
 export const routerRoutes = new Elysia({ prefix: '/routers' })
   .use(authMiddleware)
@@ -176,23 +150,87 @@ export const routerRoutes = new Elysia({ prefix: '/routers' })
       return err('NOT_FOUND', 'Router tidak ditemukan')
     }
 
-    const password = decrypt(router.passwordEncrypted)
-    const result = await testMikrotikConnection(
-      router.ipAddress,
-      router.port ?? 8728,
-      router.username,
-      password,
-    )
-
-    if (!result.connected) {
+    let client
+    try {
+      client = await connectToRouter(
+        router.ipAddress,
+        router.username,
+        decrypt(router.passwordEncrypted),
+        router.port ?? 8728,
+        8_000,
+      )
+      const status = await fetchRouterStatus(client)
+      await db
+        .update(routers)
+        .set({ lastConnectedAt: new Date() })
+        .where(eq(routers.id, router.id))
+      return ok({ connected: true, ...status }, 'Koneksi berhasil')
+    } catch (e: any) {
       set.status = 400
-      return err('CONNECTION_FAILED', 'Tidak dapat terhubung ke router MikroTik')
+      return err('CONNECTION_FAILED', e?.message ?? 'Tidak dapat terhubung ke router MikroTik')
+    } finally {
+      client?.disconnect()
+    }
+  })
+  // Real-time router status (dashboard widget)
+  .get('/:id/status', async ({ params, set }) => {
+    const [router] = await db
+      .select()
+      .from(routers)
+      .where(eq(routers.id, Number(params.id)))
+      .limit(1)
+
+    if (!router) {
+      set.status = 404
+      return err('NOT_FOUND', 'Router tidak ditemukan')
     }
 
-    await db
-      .update(routers)
-      .set({ lastConnectedAt: new Date() })
-      .where(eq(routers.id, router.id))
+    let client
+    try {
+      client = await connectToRouter(
+        router.ipAddress,
+        router.username,
+        decrypt(router.passwordEncrypted),
+        router.port ?? 8728,
+        8_000,
+      )
+      const status = await fetchRouterStatus(client)
+      return ok({ routerName: router.name, ipAddress: router.ipAddress, ...status })
+    } catch (e: any) {
+      set.status = 503
+      return err('ROUTER_OFFLINE', e?.message ?? 'Router tidak dapat dihubungi')
+    } finally {
+      client?.disconnect()
+    }
+  })
+  // Active sessions from MikroTik
+  .get('/:id/active', async ({ params, set }) => {
+    const [router] = await db
+      .select()
+      .from(routers)
+      .where(eq(routers.id, Number(params.id)))
+      .limit(1)
 
-    return ok(result, 'Koneksi berhasil')
+    if (!router) {
+      set.status = 404
+      return err('NOT_FOUND', 'Router tidak ditemukan')
+    }
+
+    let client
+    try {
+      client = await connectToRouter(
+        router.ipAddress,
+        router.username,
+        decrypt(router.passwordEncrypted),
+        router.port ?? 8728,
+        8_000,
+      )
+      const sessions = await fetchActiveSessions(client)
+      return ok(sessions)
+    } catch (e: any) {
+      set.status = 503
+      return err('ROUTER_OFFLINE', e?.message ?? 'Router tidak dapat dihubungi')
+    } finally {
+      client?.disconnect()
+    }
   })

@@ -11,15 +11,16 @@
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
-    "elysia": "^1.1.0",
     "@elysiajs/cors": "^1.1.0",
     "@elysiajs/jwt": "^1.1.0",
     "@elysiajs/swagger": "^1.1.0",
     "@mikumon/db": "workspace:*",
     "@mikumon/shared-types": "workspace:*",
-    "@mikumon/validation": "workspace:*",
     "@mikumon/utils": "workspace:*",
+    "@mikumon/validation": "workspace:*",
     "bcrypt": "^5.1.1",
+    "drizzle-orm": "^0.33.0",
+    "elysia": "^1.1.0",
     "ioredis": "^5.4.1"
   },
   "devDependencies": {

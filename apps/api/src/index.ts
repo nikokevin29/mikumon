@@ -8,6 +8,7 @@ import { hotspotRoutes } from './routes/hotspot.ts'
 import { statsRoutes } from './routes/stats.ts'
 import { reportRoutes } from './routes/reports.ts'
 import { sessionRoutes, wsTrafficRoute } from './routes/ws.ts'
+import { startSyncJobs } from './services/session-sync.ts'
 
 const app = new Elysia()
   .use(
@@ -51,3 +52,6 @@ const app = new Elysia()
 
 console.log(`Mikumon API running at http://localhost:${app.server?.port}`)
 console.log(`Swagger docs: http://localhost:${app.server?.port}/swagger`)
+
+// Start background sync jobs (session polling + expiry detection)
+startSyncJobs()
