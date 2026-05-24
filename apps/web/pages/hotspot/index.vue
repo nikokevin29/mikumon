@@ -12,9 +12,12 @@ interface HotspotUser {
   id: number
   routerId: number
   profileId: number
+  profileName: string | null
   username: string
   comment: string | null
   isActive: boolean
+  usedAt: string | null
+  expiredAt: string | null
   createdAt: string
 }
 
@@ -167,14 +170,29 @@ async function bulkDelete() {
 
 const columns = [
   { key: 'username', label: 'Username' },
-  { key: 'profileId', label: 'Profile' },
-  { key: 'isActive', label: 'Status' },
+  { key: 'profileName', label: 'Profile' },
+  { key: 'voucherStatus', label: 'Status' },
+  { key: 'usedAt', label: 'Dipakai' },
   { key: 'createdAt', label: 'Dibuat' },
   { key: 'actions', label: '' },
 ]
 
-function formatDate(d: string) {
+function formatDate(d: string | null) {
+  if (!d) return '-'
   return new Date(d).toLocaleDateString('id-ID', { dateStyle: 'short' })
+}
+
+function formatDateTime(d: string | null) {
+  if (!d) return '-'
+  return new Date(d).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+type BadgeColor = 'red' | 'green' | 'blue' | 'gray' | 'yellow' | 'orange'
+
+function voucherStatus(u: HotspotUser): { label: string; color: BadgeColor } {
+  if (!u.isActive) return { label: 'Expired', color: 'red' }
+  if (u.usedAt) return { label: 'Dipakai', color: 'blue' }
+  return { label: 'Belum Dipakai', color: 'green' }
 }
 
 const activeOptions = [
@@ -255,10 +273,18 @@ const activeOptions = [
             <span class="font-mono font-medium">{{ row.username }}</span>
           </template>
 
-          <template #isActive-data="{ row }">
-            <UBadge :color="row.isActive ? 'green' : 'gray'" variant="soft" size="xs">
-              {{ row.isActive ? 'Aktif' : 'Nonaktif' }}
+          <template #profileName-data="{ row }">
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.profileName ?? '-' }}</span>
+          </template>
+
+          <template #voucherStatus-data="{ row }">
+            <UBadge :color="voucherStatus(row).color" variant="soft" size="xs">
+              {{ voucherStatus(row).label }}
             </UBadge>
+          </template>
+
+          <template #usedAt-data="{ row }">
+            <span class="text-xs text-gray-500 font-mono">{{ formatDateTime(row.usedAt) }}</span>
           </template>
 
           <template #createdAt-data="{ row }">

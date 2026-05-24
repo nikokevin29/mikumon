@@ -27,13 +27,30 @@ export const hotspotRoutes = new Elysia({ prefix: '/hotspot' })
     const where = conditions.length > 0 ? and(...conditions) : undefined
 
     const [rows, [{ value: total }]] = await Promise.all([
-      db.select().from(hotspotUsers).where(where).limit(limit).offset(offset).orderBy(hotspotUsers.createdAt),
+      db
+        .select({
+          id: hotspotUsers.id,
+          routerId: hotspotUsers.routerId,
+          profileId: hotspotUsers.profileId,
+          profileName: userProfiles.name,
+          username: hotspotUsers.username,
+          comment: hotspotUsers.comment,
+          isActive: hotspotUsers.isActive,
+          usedAt: hotspotUsers.usedAt,
+          expiredAt: hotspotUsers.expiredAt,
+          createdAt: hotspotUsers.createdAt,
+          updatedAt: hotspotUsers.updatedAt,
+        })
+        .from(hotspotUsers)
+        .leftJoin(userProfiles, eq(hotspotUsers.profileId, userProfiles.id))
+        .where(where)
+        .limit(limit)
+        .offset(offset)
+        .orderBy(hotspotUsers.createdAt),
       db.select({ value: count() }).from(hotspotUsers).where(where),
     ])
 
-    // Hide passwords from list
-    const data = rows.map(({ password: _, ...u }) => u)
-    return paginated(data, Number(total), page, limit)
+    return paginated(rows, Number(total), page, limit)
   })
   // Generate bulk users
   .post(

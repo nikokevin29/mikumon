@@ -17,6 +17,9 @@ interface Profile {
   price: string
   sellingPrice: string | null
   limitUptimeSeconds: number | null
+  limitBytesTotal: number | null
+  limitBytesDown: number | null
+  limitBytesUp: number | null
   expiredMode: 'none' | 'remove' | 'record'
   parentQueue: string | null
   addressPool: string | null
@@ -66,6 +69,9 @@ const form = reactive({
   price: '',
   sellingPrice: '',
   limitUptimeSeconds: '',
+  limitBytesTotal: '',
+  limitBytesDown: '',
+  limitBytesUp: '',
   parentQueue: '',
   addressPool: '',
   expiredMode: 'none' as 'none' | 'remove' | 'record',
@@ -85,6 +91,9 @@ function openAdd() {
     price: '',
     sellingPrice: '',
     limitUptimeSeconds: '',
+    limitBytesTotal: '',
+    limitBytesDown: '',
+    limitBytesUp: '',
     parentQueue: '',
     addressPool: '',
     expiredMode: 'none',
@@ -100,6 +109,9 @@ function openEdit(p: Profile) {
     price: p.price,
     sellingPrice: p.sellingPrice ?? '',
     limitUptimeSeconds: p.limitUptimeSeconds ? String(p.limitUptimeSeconds) : '',
+    limitBytesTotal: p.limitBytesTotal ? String(p.limitBytesTotal) : '',
+    limitBytesDown: p.limitBytesDown ? String(p.limitBytesDown) : '',
+    limitBytesUp: p.limitBytesUp ? String(p.limitBytesUp) : '',
     parentQueue: p.parentQueue ?? '',
     addressPool: p.addressPool ?? '',
     expiredMode: p.expiredMode,
@@ -114,6 +126,9 @@ function buildBody() {
     price: Number(form.price),
     sellingPrice: form.sellingPrice ? Number(form.sellingPrice) : undefined,
     limitUptimeSeconds: form.limitUptimeSeconds ? Number(form.limitUptimeSeconds) : undefined,
+    limitBytesTotal: form.limitBytesTotal ? Number(form.limitBytesTotal) : undefined,
+    limitBytesDown: form.limitBytesDown ? Number(form.limitBytesDown) : undefined,
+    limitBytesUp: form.limitBytesUp ? Number(form.limitBytesUp) : undefined,
     parentQueue: form.parentQueue || undefined,
     addressPool: form.addressPool || undefined,
     expiredMode: form.expiredMode,
@@ -313,10 +328,22 @@ function formatRp(val: string | null) {
 
           <div class="grid grid-cols-2 gap-3">
             <UFormGroup label="Durasi (detik)">
-              <UInput v-model="form.limitUptimeSeconds" type="number" placeholder="86400" />
+              <UInput v-model="form.limitUptimeSeconds" type="number" placeholder="86400 = 1 hari" />
             </UFormGroup>
             <UFormGroup label="Expired Mode">
               <USelect v-model="form.expiredMode" :options="expiredModeOptions" value-attribute="value" option-attribute="label" />
+            </UFormGroup>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <UFormGroup label="Limit Total (bytes)">
+              <UInput v-model="form.limitBytesTotal" type="number" placeholder="1073741824" />
+            </UFormGroup>
+            <UFormGroup label="Limit Download (bytes)">
+              <UInput v-model="form.limitBytesDown" type="number" placeholder="0 = unlimited" />
+            </UFormGroup>
+            <UFormGroup label="Limit Upload (bytes)">
+              <UInput v-model="form.limitBytesUp" type="number" placeholder="0 = unlimited" />
             </UFormGroup>
           </div>
 
