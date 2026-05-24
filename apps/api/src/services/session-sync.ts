@@ -1,6 +1,7 @@
 import { db, routers, hotspotActiveSessions, hotspotUsers, salesRecords, userProfiles } from '@mikumon/db'
 import { decrypt } from '@mikumon/utils'
 import { connectToRouter, fetchActiveSessions } from './mikrotik.ts'
+import { notifyFirstUse, notifyRouterOffline } from './telegram.ts'
 import { eq, and, inArray } from 'drizzle-orm'
 
 let syncRunning = false
@@ -107,6 +108,8 @@ export async function syncSessionsForRouter(routerId: number): Promise<void> {
                 price: String(profile.sellingPrice ?? profile.price),
                 soldAt: now,
               })
+              // Fire-and-forget Telegram notification
+              notifyFirstUse(dbUser.username, profile.name, router.name).catch(() => {})
             }
           }
         }
@@ -185,6 +188,8 @@ export async function syncExpiredUsersForRouter(routerId: number): Promise<void>
         .set({ isActive: false, expiredAt: new Date(), updatedAt: new Date() })
         .where(inArray(hotspotUsers.id, expiredIds))
     }
+  } catch {
+    notifyRouterOffline(router.name, router.ipAddress).catch(() => {})
   } finally {
     client?.disconnect()
   }

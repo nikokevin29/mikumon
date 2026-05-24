@@ -8,6 +8,9 @@ import { hotspotRoutes } from './routes/hotspot.ts'
 import { statsRoutes } from './routes/stats.ts'
 import { reportRoutes } from './routes/reports.ts'
 import { sessionRoutes, wsTrafficRoute } from './routes/ws.ts'
+import { pppRoutes } from './routes/ppp.ts'
+import { dhcpRoutes } from './routes/dhcp.ts'
+import { settingsRoutes } from './routes/settings.ts'
 import { startSyncJobs } from './services/session-sync.ts'
 
 const app = new Elysia()
@@ -34,7 +37,10 @@ const app = new Elysia()
       .use(hotspotRoutes)
       .use(statsRoutes)
       .use(reportRoutes)
-      .use(sessionRoutes),
+      .use(sessionRoutes)
+      .use(pppRoutes)
+      .use(dhcpRoutes)
+      .use(settingsRoutes),
   )
   .onError(({ code, error, set }) => {
     if (code === 'VALIDATION') {

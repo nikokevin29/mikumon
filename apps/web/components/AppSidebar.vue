@@ -7,6 +7,7 @@ const route = useRoute()
 const open = ref<Record<string, boolean>>({
   hotspot: true,
   hotspotUsers: false,
+  network: false,
 })
 
 function toggle(key: string) {
@@ -20,6 +21,14 @@ function isActive(path: string) {
 function isGroupActive(paths: string[]) {
   return paths.some((p) => route.path.startsWith(p))
 }
+
+const navLink = 'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors'
+const navLinkSub = 'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors'
+const navLinkSubSub = 'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors'
+const active = 'bg-primary-600 text-white'
+const activeSub = 'bg-primary-600/80 text-white'
+const inactive = 'text-gray-300 hover:bg-gray-700/60 hover:text-white'
+const inactiveSub = 'text-gray-400 hover:bg-gray-700/60 hover:text-white'
 </script>
 
 <template>
@@ -35,12 +44,7 @@ function isGroupActive(paths: string[]) {
 
       <!-- Dashboard -->
       <NuxtLink to="/">
-        <div
-          :class="[
-            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors',
-            isActive('/') ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700/60 hover:text-white',
-          ]"
-        >
+        <div :class="[navLink, isActive('/') ? active : inactive]">
           <UIcon name="i-heroicons-home" class="w-4 h-4 shrink-0" />
           <span>Dashboard</span>
         </div>
@@ -50,20 +54,15 @@ function isGroupActive(paths: string[]) {
       <div>
         <button
           class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-gray-700/60"
-          :class="isGroupActive(['/hotspot', '/monitoring']) ? 'text-white' : 'text-gray-300'"
+          :class="isGroupActive(['/hotspot', '/monitoring', '/profiles']) ? 'text-white' : 'text-gray-300'"
           @click="toggle('hotspot')"
         >
           <UIcon name="i-heroicons-wifi" class="w-4 h-4 shrink-0" />
           <span class="flex-1 text-left">Hotspot</span>
-          <UIcon
-            name="i-heroicons-chevron-down"
-            class="w-3.5 h-3.5 transition-transform duration-200"
-            :class="open.hotspot ? 'rotate-180' : ''"
-          />
+          <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" :class="open.hotspot ? 'rotate-180' : ''" />
         </button>
 
         <div v-show="open.hotspot" class="ml-3 mt-0.5 pl-3 border-l border-gray-700 space-y-0.5">
-
           <!-- Users sub-group -->
           <button
             class="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-700/60"
@@ -72,67 +71,40 @@ function isGroupActive(paths: string[]) {
           >
             <UIcon name="i-heroicons-users" class="w-3.5 h-3.5 shrink-0" />
             <span class="flex-1 text-left">Users</span>
-            <UIcon
-              name="i-heroicons-chevron-down"
-              class="w-3 h-3 transition-transform duration-200"
-              :class="open.hotspotUsers ? 'rotate-180' : ''"
-            />
+            <UIcon name="i-heroicons-chevron-down" class="w-3 h-3 transition-transform duration-200" :class="open.hotspotUsers ? 'rotate-180' : ''" />
           </button>
 
           <div v-show="open.hotspotUsers" class="ml-3 pl-3 border-l border-gray-700/60 space-y-0.5">
             <NuxtLink to="/hotspot">
-              <div
-                :class="[
-                  'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors',
-                  isActive('/hotspot') ? 'bg-primary-600/80 text-white' : 'text-gray-400 hover:bg-gray-700/60 hover:text-white',
-                ]"
-              >
+              <div :class="[navLinkSubSub, isActive('/hotspot') ? activeSub : inactiveSub]">
                 <UIcon name="i-heroicons-list-bullet" class="w-3.5 h-3.5 shrink-0" />
                 <span>Daftar User</span>
               </div>
             </NuxtLink>
             <NuxtLink to="/hotspot?generate=1">
-              <div class="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-gray-400 hover:bg-gray-700/60 hover:text-white cursor-pointer transition-colors">
+              <div :class="[navLinkSubSub, inactiveSub]">
                 <UIcon name="i-heroicons-sparkles" class="w-3.5 h-3.5 shrink-0" />
                 <span>Generate</span>
               </div>
             </NuxtLink>
           </div>
 
-          <!-- User Profile sub-group -->
           <NuxtLink to="/profiles">
-            <div
-              :class="[
-                'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors',
-                isActive('/profiles') ? 'bg-primary-600/80 text-white' : 'text-gray-400 hover:bg-gray-700/60 hover:text-white',
-              ]"
-            >
+            <div :class="[navLinkSub, isActive('/profiles') ? activeSub : inactiveSub]">
               <UIcon name="i-heroicons-user-group" class="w-3.5 h-3.5 shrink-0" />
               <span>User Profile</span>
             </div>
           </NuxtLink>
 
-          <!-- Vouchers -->
           <NuxtLink to="/hotspot/vouchers">
-            <div
-              :class="[
-                'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors',
-                isActive('/hotspot/vouchers') ? 'bg-primary-600/80 text-white' : 'text-gray-400 hover:bg-gray-700/60 hover:text-white',
-              ]"
-            >
+            <div :class="[navLinkSub, isActive('/hotspot/vouchers') ? activeSub : inactiveSub]">
               <UIcon name="i-heroicons-ticket" class="w-3.5 h-3.5 shrink-0" />
               <span>Vouchers</span>
             </div>
           </NuxtLink>
 
-          <!-- Hotspot Aktif -->
           <NuxtLink to="/monitoring">
-            <div
-              :class="[
-                'flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm cursor-pointer transition-colors',
-                isActive('/monitoring') ? 'bg-primary-600/80 text-white' : 'text-gray-400 hover:bg-gray-700/60 hover:text-white',
-              ]"
-            >
+            <div :class="[navLinkSub, isActive('/monitoring') ? activeSub : inactiveSub]">
               <UIcon name="i-heroicons-signal" class="w-3.5 h-3.5 shrink-0" />
               <span>Hotspot Aktif</span>
             </div>
@@ -142,16 +114,39 @@ function isGroupActive(paths: string[]) {
 
       <!-- Routers -->
       <NuxtLink to="/routers">
-        <div
-          :class="[
-            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors',
-            isActive('/routers') ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700/60 hover:text-white',
-          ]"
-        >
+        <div :class="[navLink, isActive('/routers') ? active : inactive]">
           <UIcon name="i-heroicons-server" class="w-4 h-4 shrink-0" />
           <span>Routers</span>
         </div>
       </NuxtLink>
+
+      <!-- Network group (PPP + DHCP) -->
+      <div>
+        <button
+          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-gray-700/60"
+          :class="isGroupActive(['/ppp', '/dhcp']) ? 'text-white' : 'text-gray-300'"
+          @click="toggle('network')"
+        >
+          <UIcon name="i-heroicons-globe-alt" class="w-4 h-4 shrink-0" />
+          <span class="flex-1 text-left">Network</span>
+          <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" :class="open.network ? 'rotate-180' : ''" />
+        </button>
+
+        <div v-show="open.network" class="ml-3 mt-0.5 pl-3 border-l border-gray-700 space-y-0.5">
+          <NuxtLink to="/ppp">
+            <div :class="[navLinkSub, isActive('/ppp') ? activeSub : inactiveSub]">
+              <UIcon name="i-heroicons-arrows-right-left" class="w-3.5 h-3.5 shrink-0" />
+              <span>PPP Management</span>
+            </div>
+          </NuxtLink>
+          <NuxtLink to="/dhcp">
+            <div :class="[navLinkSub, isActive('/dhcp') ? activeSub : inactiveSub]">
+              <UIcon name="i-heroicons-computer-desktop" class="w-3.5 h-3.5 shrink-0" />
+              <span>DHCP Leases</span>
+            </div>
+          </NuxtLink>
+        </div>
+      </div>
 
       <!-- Divider -->
       <div class="pt-1 pb-1">
@@ -160,12 +155,7 @@ function isGroupActive(paths: string[]) {
 
       <!-- Live Monitoring -->
       <NuxtLink to="/monitoring">
-        <div
-          :class="[
-            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors',
-            isActive('/monitoring') ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700/60 hover:text-white',
-          ]"
-        >
+        <div :class="[navLink, isActive('/monitoring') ? active : inactive]">
           <UIcon name="i-heroicons-chart-bar-square" class="w-4 h-4 shrink-0" />
           <span>Live Monitoring</span>
         </div>
@@ -173,14 +163,17 @@ function isGroupActive(paths: string[]) {
 
       <!-- Laporan -->
       <NuxtLink to="/reports">
-        <div
-          :class="[
-            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors',
-            isActive('/reports') ? 'bg-primary-600 text-white' : 'text-gray-300 hover:bg-gray-700/60 hover:text-white',
-          ]"
-        >
+        <div :class="[navLink, isActive('/reports') ? active : inactive]">
           <UIcon name="i-heroicons-chart-bar" class="w-4 h-4 shrink-0" />
           <span>Laporan Penjualan</span>
+        </div>
+      </NuxtLink>
+
+      <!-- Settings -->
+      <NuxtLink to="/settings">
+        <div :class="[navLink, isActive('/settings') ? active : inactive]">
+          <UIcon name="i-heroicons-cog-6-tooth" class="w-4 h-4 shrink-0" />
+          <span>Pengaturan</span>
         </div>
       </NuxtLink>
 
