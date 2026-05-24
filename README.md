@@ -20,12 +20,12 @@ Open-source ISP Management Platform — alternatif Mikhmon V3. Kelola router Mik
 | Sidebar Navigasi | ✅ Selesai | Collapsible, dark mode, active state |
 | Live Monitoring (WebSocket) | ✅ Selesai | Sesi aktif real-time, chart traffic |
 | Laporan Penjualan | ✅ Selesai | Revenue per hari/minggu/bulan, chart |
-| Halaman Hotspot Users | 🚧 In Progress | UI list voucher, status used/expired belum ditampilkan |
-| Halaman Profiles | 🚧 In Progress | Form tambah/edit profile ada, sync ke MikroTik belum |
-| Print Voucher | ⏳ Belum | Template cetak, export PDF/gambar |
-| PPP Management | ⏳ Belum | Kelola PPPoE secret |
-| Telegram Notifikasi | ⏳ Belum | Bot notif sesi, income, error |
-| DHCP Leases | ⏳ Belum | Tampilkan DHCP leases dari MikroTik |
+| Halaman Hotspot Users | ✅ Selesai | List, filter status, bulk delete, generate voucher |
+| Halaman Profiles | ✅ Selesai | CRUD profil, sync ke MikroTik otomatis saat generate |
+| Print Voucher | ✅ Selesai | Layout picker (2/3/4 per baris), cut marks, logo toggle |
+| PPP Management | ✅ Selesai | List/tambah/hapus PPPoE secrets, lihat & putus sesi aktif |
+| DHCP Leases | ✅ Selesai | Tampilkan leases, jadikan static, hapus |
+| Telegram Notifikasi | ✅ Selesai | Bot notif first-use voucher & router offline, halaman settings |
 
 ## Tech Stack
 
@@ -41,11 +41,14 @@ Open-source ISP Management Platform — alternatif Mikhmon V3. Kelola router Mik
 ## Fitur
 
 - **Auth** — Login admin, session JWT via httpOnly cookie (30 menit), auto-redirect
-- **Routers** — CRUD router MikroTik, test koneksi real (RouterOS API), enkripsi password (AES-256-GCM)
+- **Routers** — CRUD router MikroTik, test koneksi real (RouterOS API), enkripsi password (AES-256-GCM), status real-time inline (CPU, memori, uptime, board info)
 - **MikroTik API** — Koneksi langsung ke RouterOS via binary protocol port 8728 (mendukung v6.43+ dan v7.x)
 - **Profiles** — Manajemen profil hotspot per router (harga, durasi, bandwidth, mode expired)
-- **Hotspot Users** — Generate voucher bulk dengan limit-uptime/bytes, sync ke MikroTik
+- **Hotspot Users** — Generate voucher bulk dengan limit-uptime/bytes, sync ke MikroTik; print voucher dengan layout picker, cut marks, logo toggle
 - **Voucher Lifecycle** — Deteksi first-use via session polling, income dicatat saat aktivasi, deteksi expired otomatis
+- **PPP Management** — Daftar, tambah, hapus PPPoE secrets; monitor dan putus sesi PPPoE aktif
+- **DHCP Leases** — Tampilkan semua DHCP lease per router, jadikan static, hapus
+- **Telegram Notifikasi** — Bot notif otomatis: voucher diaktifkan (first-use) dan router tidak bisa dijangkau; konfigurasi via halaman settings
 - **Live Monitoring** — Sesi hotspot aktif real-time via WebSocket, chart traffic top-10
 - **Laporan Penjualan** — Revenue per hari/minggu/bulan, breakdown per router, bar chart
 - **Dashboard** — Stat cards berwarna, panel status router (CPU/memori/uptime), sesi terbaru, akses cepat
@@ -57,9 +60,10 @@ mikumon/
 ├── apps/
 │   ├── api/                    # Bun + Elysia REST API + WebSocket
 │   │   └── src/
-│   │       ├── routes/         # auth, routers, profiles, hotspot, stats, reports, ws
+│   │       ├── routes/         # auth, routers, profiles, hotspot, ppp, dhcp, settings, stats, reports, ws
 │   │       ├── services/
 │   │       │   ├── mikrotik.ts       # RouterOS API binary protocol client
+│   │       │   ├── telegram.ts       # Bot Telegram: notif first-use & router offline
 │   │       │   └── session-sync.ts   # Background sync: sessions + expiry detection
 │   │       └── middleware/
 │   └── web/                    # Nuxt 3 SPA admin panel
@@ -197,6 +201,29 @@ pnpm dev
 | DELETE | `/api/hotspot/users/:id` | Hapus user |
 | DELETE | `/api/hotspot/users` | Hapus bulk (`{ ids: [] }`) |
 
+### PPP Management
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/ppp/secrets?routerId=` | Daftar PPPoE secrets |
+| POST | `/api/ppp/secrets` | Tambah PPPoE secret |
+| DELETE | `/api/ppp/secrets/:id?routerId=` | Hapus PPPoE secret |
+| GET | `/api/ppp/active?routerId=` | Sesi PPPoE aktif |
+| DELETE | `/api/ppp/active/:id?routerId=` | Putus sesi PPPoE |
+
+### DHCP Leases
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/dhcp/leases?routerId=` | Daftar DHCP leases |
+| POST | `/api/dhcp/leases/:id/make-static?routerId=` | Jadikan lease static |
+| DELETE | `/api/dhcp/leases/:id?routerId=` | Hapus lease |
+
+### Settings (Telegram)
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/api/settings/telegram` | Ambil konfigurasi Telegram (token disamarkan) |
+| PUT | `/api/settings/telegram` | Simpan konfigurasi Telegram |
+| POST | `/api/settings/telegram/test` | Kirim pesan test ke bot |
+
 ### Monitoring & Reports
 | Method | Path | Deskripsi |
 |--------|------|-----------|
@@ -219,10 +246,12 @@ Session Sync (tiap 30 detik)
   └─► Upsert DB hotspot_active_sessions
   └─► First-use detected → set hotspot_users.used_at
   └─► Create salesRecords (income dicatat saat aktivasi, bukan saat generate)
+  └─► Kirim notif Telegram: "Voucher <user> diaktifkan (profil: X, router: Y)"
 
 Expiry Sync (tiap 5 menit)
   └─► Poll MikroTik /ip/hotspot/user/print
   └─► User hilang dari MikroTik → set hotspot_users.is_active=false, expired_at
+  └─► Router tidak bisa dijangkau → Kirim notif Telegram: "Router offline"
 ```
 
 ## Deploy dengan Docker
