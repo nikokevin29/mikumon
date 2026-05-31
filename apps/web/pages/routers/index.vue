@@ -1,6 +1,4 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
-
 const { $api } = useApi()
 const toast = useToast()
 
@@ -160,6 +158,32 @@ async function testConnection(router: RouterRow) {
   } finally {
     testing.value = null
   }
+}
+
+// Reboot / Shutdown
+const rebooting = ref<number | null>(null)
+const shuttingDown = ref<number | null>(null)
+
+async function rebootRouter(router: RouterRow) {
+  if (!confirm(`Reboot router "${router.name}"? Koneksi akan terputus sementara.`)) return
+  rebooting.value = router.id
+  try {
+    await $api(`/system/reboot?routerId=${router.id}`, { method: 'POST' })
+    toast.add({ title: `${router.name} sedang reboot`, color: 'yellow', icon: 'i-heroicons-arrow-path' })
+  } catch (e: any) {
+    toast.add({ title: e?.data?.error?.message ?? 'Gagal reboot', color: 'red', icon: 'i-heroicons-x-circle' })
+  } finally { rebooting.value = null }
+}
+
+async function shutdownRouter(router: RouterRow) {
+  if (!confirm(`Shutdown router "${router.name}"? Router akan mati dan tidak bisa diakses sampai dinyalakan kembali.`)) return
+  shuttingDown.value = router.id
+  try {
+    await $api(`/system/shutdown?routerId=${router.id}`, { method: 'POST' })
+    toast.add({ title: `${router.name} sedang shutdown`, color: 'orange', icon: 'i-heroicons-power' })
+  } catch (e: any) {
+    toast.add({ title: e?.data?.error?.message ?? 'Gagal shutdown', color: 'red', icon: 'i-heroicons-x-circle' })
+  } finally { shuttingDown.value = null }
 }
 
 const confirmDelete = ref<RouterRow | null>(null)
@@ -329,9 +353,19 @@ function getStatus(id: number): RouterStatus | null {
                   </div>
                 </div>
 
-                <div class="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
-                  <span><span class="font-semibold text-emerald-600">{{ getStatus(row.id)?.hotspotActive }}</span> sesi aktif</span>
-                  <span><span class="font-semibold text-gray-800 dark:text-gray-200">{{ getStatus(row.id)?.hotspotUsers }}</span> total user</span>
+                <div class="flex items-center justify-between">
+                  <div class="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <span><span class="font-semibold text-emerald-600">{{ getStatus(row.id)?.hotspotActive }}</span> sesi aktif</span>
+                    <span><span class="font-semibold text-gray-800 dark:text-gray-200">{{ getStatus(row.id)?.hotspotUsers }}</span> total user</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <UTooltip text="Reboot Router">
+                      <UButton icon="i-heroicons-arrow-path" size="xs" color="yellow" variant="soft" :loading="rebooting === row.id" @click="rebootRouter(row)">Reboot</UButton>
+                    </UTooltip>
+                    <UTooltip text="Shutdown Router">
+                      <UButton icon="i-heroicons-power" size="xs" color="red" variant="soft" :loading="shuttingDown === row.id" @click="shutdownRouter(row)">Shutdown</UButton>
+                    </UTooltip>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,11 +1,9 @@
 import { Elysia } from 'elysia'
 import { db, routers, userProfiles, hotspotUsers, salesRecords, hotspotActiveSessions } from '@mikumon/db'
 import { count, sum, gte } from 'drizzle-orm'
-import { authMiddleware } from '../middleware/auth.ts'
 import { ok } from '@mikumon/utils'
 
 export const statsRoutes = new Elysia({ prefix: '/stats' })
-  .use(authMiddleware)
   .get('/', async () => {
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())

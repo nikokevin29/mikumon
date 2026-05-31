@@ -1,12 +1,10 @@
 import { Elysia } from 'elysia'
 import { db, routers } from '@mikumon/db'
 import { ok, err, decrypt } from '@mikumon/utils'
-import { authMiddleware } from '../middleware/auth.ts'
 import { eq } from 'drizzle-orm'
 import { connectToRouter } from '../services/mikrotik.ts'
 
 export const dhcpRoutes = new Elysia({ prefix: '/dhcp' })
-  .use(authMiddleware)
   // List DHCP leases
   .get('/leases', async ({ query, set }) => {
     const routerId = Number(query.routerId)

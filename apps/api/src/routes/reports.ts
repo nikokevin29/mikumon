@@ -1,11 +1,9 @@
 import { Elysia } from 'elysia'
 import { db, salesRecords, routers, userProfiles } from '@mikumon/db'
-import { authMiddleware } from '../middleware/auth.ts'
 import { ok } from '@mikumon/utils'
 import { sql, sum, count, and, gte, lte, eq } from 'drizzle-orm'
 
 export const reportRoutes = new Elysia({ prefix: '/reports' })
-  .use(authMiddleware)
   .get('/sales', async ({ query }) => {
     const end = query.end ? new Date(query.end as string) : new Date()
     const start = query.start

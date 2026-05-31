@@ -1,116 +1,109 @@
 import {
-  pgTable,
-  serial,
-  varchar,
+  sqliteTable,
   integer,
-  bigint,
-  decimal,
-  boolean,
-  timestamp,
+  real,
   text,
-  unique,
-} from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
+import { relations, sql } from 'drizzle-orm'
 
-export const routers = pgTable('routers', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).unique().notNull(),
-  ipAddress: varchar('ip_address', { length: 45 }).notNull(),
+export const routers = sqliteTable('routers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').unique().notNull(),
+  ipAddress: text('ip_address').notNull(),
   port: integer('port').default(8728),
-  username: varchar('username', { length: 255 }).notNull(),
+  username: text('username').notNull(),
   passwordEncrypted: text('password_encrypted').notNull(),
-  isDefault: boolean('is_default').default(false),
-  isActive: boolean('is_active').default(true),
-  lastConnectedAt: timestamp('last_connected_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  isDefault: integer('is_default', { mode: 'boolean' }).default(false),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  lastConnectedAt: integer('last_connected_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 })
 
-export const userProfiles = pgTable(
+export const userProfiles = sqliteTable(
   'user_profiles',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     routerId: integer('router_id')
       .notNull()
       .references(() => routers.id, { onDelete: 'cascade' }),
-    name: varchar('name', { length: 255 }).notNull(),
+    name: text('name').notNull(),
     limitUptimeSeconds: integer('limit_uptime_seconds'),
-    limitBytesTotal: bigint('limit_bytes_total', { mode: 'number' }),
-    limitBytesDown: bigint('limit_bytes_down', { mode: 'number' }),
-    limitBytesUp: bigint('limit_bytes_up', { mode: 'number' }),
-    price: decimal('price', { precision: 10, scale: 2 }).notNull(),
-    sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }),
-    expiredMode: varchar('expired_mode', { length: 20 }).default('none'),
-    parentQueue: varchar('parent_queue', { length: 255 }),
-    addressPool: varchar('address_pool', { length: 255 }),
-    isActive: boolean('is_active').default(true),
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
+    limitBytesTotal: integer('limit_bytes_total'),
+    limitBytesDown: integer('limit_bytes_down'),
+    limitBytesUp: integer('limit_bytes_up'),
+    price: real('price').notNull(),
+    sellingPrice: real('selling_price'),
+    expiredMode: text('expired_mode').default('none'),
+    parentQueue: text('parent_queue'),
+    addressPool: text('address_pool'),
+    isActive: integer('is_active', { mode: 'boolean' }).default(true),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
   },
-  (table) => [unique('router_profile_name').on(table.routerId, table.name)],
+  (table) => [uniqueIndex('router_profile_name').on(table.routerId, table.name)],
 )
 
-export const hotspotUsers = pgTable(
+export const hotspotUsers = sqliteTable(
   'hotspot_users',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     routerId: integer('router_id')
       .notNull()
       .references(() => routers.id, { onDelete: 'cascade' }),
     profileId: integer('profile_id')
       .notNull()
       .references(() => userProfiles.id),
-    username: varchar('username', { length: 255 }).notNull(),
-    password: varchar('password', { length: 255 }).notNull(),
+    username: text('username').notNull(),
+    password: text('password').notNull(),
     comment: text('comment'),
-    isActive: boolean('is_active').default(true),
-    usedAt: timestamp('used_at'),
-    expiredAt: timestamp('expired_at'),
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
+    isActive: integer('is_active', { mode: 'boolean' }).default(true),
+    usedAt: integer('used_at', { mode: 'timestamp' }),
+    expiredAt: integer('expired_at', { mode: 'timestamp' }),
+    createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
   },
-  (table) => [unique('router_username').on(table.routerId, table.username)],
+  (table) => [uniqueIndex('router_username').on(table.routerId, table.username)],
 )
 
-export const hotspotActiveSessions = pgTable('hotspot_active_sessions', {
-  id: serial('id').primaryKey(),
+export const hotspotActiveSessions = sqliteTable('hotspot_active_sessions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   routerId: integer('router_id')
     .notNull()
     .references(() => routers.id, { onDelete: 'cascade' }),
-  userId: integer('user_id').references(() => hotspotUsers.id, {
-    onDelete: 'set null',
-  }),
-  username: varchar('username', { length: 255 }),
-  ipAddress: varchar('ip_address', { length: 45 }),
-  macAddress: varchar('mac_address', { length: 17 }),
-  sessionId: varchar('session_id', { length: 255 }),
-  uploadBytes: bigint('upload_bytes', { mode: 'number' }).default(0),
-  downloadBytes: bigint('download_bytes', { mode: 'number' }).default(0),
-  connectedAt: timestamp('connected_at'),
-  lastUpdated: timestamp('last_updated').defaultNow(),
+  userId: integer('user_id').references(() => hotspotUsers.id, { onDelete: 'set null' }),
+  username: text('username'),
+  ipAddress: text('ip_address'),
+  macAddress: text('mac_address'),
+  sessionId: text('session_id'),
+  uploadBytes: integer('upload_bytes').default(0),
+  downloadBytes: integer('download_bytes').default(0),
+  connectedAt: integer('connected_at', { mode: 'timestamp' }),
+  lastUpdated: integer('last_updated', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 })
 
-export const salesRecords = pgTable('sales_records', {
-  id: serial('id').primaryKey(),
+export const salesRecords = sqliteTable('sales_records', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
   routerId: integer('router_id')
     .notNull()
     .references(() => routers.id, { onDelete: 'cascade' }),
   profileId: integer('profile_id')
     .notNull()
     .references(() => userProfiles.id),
-  username: varchar('username', { length: 255 }),
-  price: decimal('price', { precision: 10, scale: 2 }),
-  soldAt: timestamp('sold_at').defaultNow(),
-  createdAt: timestamp('created_at').defaultNow(),
+  username: text('username'),
+  price: real('price'),
+  soldAt: integer('sold_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 })
 
-export const admins = pgTable('admins', {
-  id: serial('id').primaryKey(),
-  email: varchar('email', { length: 255 }).unique().notNull(),
-  name: varchar('name', { length: 255 }).notNull(),
+export const admins = sqliteTable('admins', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  email: text('email').unique().notNull(),
+  name: text('name').notNull(),
   passwordHash: text('password_hash').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).default(sql`(unixepoch())`),
 })
 
 // Relations
@@ -121,50 +114,23 @@ export const routersRelations = relations(routers, ({ many }) => ({
   sales: many(salesRecords),
 }))
 
-export const userProfilesRelations = relations(
-  userProfiles,
-  ({ one, many }) => ({
-    router: one(routers, {
-      fields: [userProfiles.routerId],
-      references: [routers.id],
-    }),
-    hotspotUsers: many(hotspotUsers),
-    sales: many(salesRecords),
-  }),
-)
-
-export const hotspotUsersRelations = relations(hotspotUsers, ({ one }) => ({
-  router: one(routers, {
-    fields: [hotspotUsers.routerId],
-    references: [routers.id],
-  }),
-  profile: one(userProfiles, {
-    fields: [hotspotUsers.profileId],
-    references: [userProfiles.id],
-  }),
+export const userProfilesRelations = relations(userProfiles, ({ one, many }) => ({
+  router: one(routers, { fields: [userProfiles.routerId], references: [routers.id] }),
+  hotspotUsers: many(hotspotUsers),
+  sales: many(salesRecords),
 }))
 
-export const hotspotActiveSessionsRelations = relations(
-  hotspotActiveSessions,
-  ({ one }) => ({
-    router: one(routers, {
-      fields: [hotspotActiveSessions.routerId],
-      references: [routers.id],
-    }),
-    user: one(hotspotUsers, {
-      fields: [hotspotActiveSessions.userId],
-      references: [hotspotUsers.id],
-    }),
-  }),
-)
+export const hotspotUsersRelations = relations(hotspotUsers, ({ one }) => ({
+  router: one(routers, { fields: [hotspotUsers.routerId], references: [routers.id] }),
+  profile: one(userProfiles, { fields: [hotspotUsers.profileId], references: [userProfiles.id] }),
+}))
+
+export const hotspotActiveSessionsRelations = relations(hotspotActiveSessions, ({ one }) => ({
+  router: one(routers, { fields: [hotspotActiveSessions.routerId], references: [routers.id] }),
+  user: one(hotspotUsers, { fields: [hotspotActiveSessions.userId], references: [hotspotUsers.id] }),
+}))
 
 export const salesRecordsRelations = relations(salesRecords, ({ one }) => ({
-  router: one(routers, {
-    fields: [salesRecords.routerId],
-    references: [routers.id],
-  }),
-  profile: one(userProfiles, {
-    fields: [salesRecords.profileId],
-    references: [userProfiles.id],
-  }),
+  router: one(routers, { fields: [salesRecords.routerId], references: [routers.id] }),
+  profile: one(userProfiles, { fields: [salesRecords.profileId], references: [userProfiles.id] }),
 }))

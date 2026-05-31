@@ -1,7 +1,6 @@
 import { Elysia, t } from 'elysia'
 import { db, routers } from '@mikumon/db'
 import { ok, err, decrypt } from '@mikumon/utils'
-import { authMiddleware } from '../middleware/auth.ts'
 import { eq } from 'drizzle-orm'
 import { connectToRouter } from '../services/mikrotik.ts'
 
@@ -11,7 +10,6 @@ async function getRouter(routerId: number) {
 }
 
 export const pppRoutes = new Elysia({ prefix: '/ppp' })
-  .use(authMiddleware)
   // List PPPoE secrets
   .get('/secrets', async ({ query, set }) => {
     const routerId = Number(query.routerId)

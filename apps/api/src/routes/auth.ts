@@ -4,7 +4,6 @@ import { loginSchema } from '@mikumon/validation'
 import { ok, err } from '@mikumon/utils'
 import { jwtConfig } from '../middleware/auth.ts'
 import { eq } from 'drizzle-orm'
-import bcrypt from 'bcrypt'
 
 export const authRoutes = new Elysia({ prefix: '/auth' })
   .use(jwtConfig)
@@ -25,7 +24,7 @@ export const authRoutes = new Elysia({ prefix: '/auth' })
         return err('INVALID_CREDENTIALS', 'Email atau password salah')
       }
 
-      const valid = await bcrypt.compare(password, admin.passwordHash)
+      const valid = await Bun.password.verify(password, admin.passwordHash)
       if (!valid) {
         set.status = 401
         return err('INVALID_CREDENTIALS', 'Email atau password salah')

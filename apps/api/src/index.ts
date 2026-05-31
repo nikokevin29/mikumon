@@ -1,3 +1,6 @@
+import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
+import { db } from '@mikumon/db'
+import { join } from 'path'
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
@@ -11,12 +14,23 @@ import { sessionRoutes, wsTrafficRoute } from './routes/ws.ts'
 import { pppRoutes } from './routes/ppp.ts'
 import { dhcpRoutes } from './routes/dhcp.ts'
 import { settingsRoutes } from './routes/settings.ts'
+import { hotspotAdvancedRoutes } from './routes/hotspot-advanced.ts'
+import { systemRoutes } from './routes/system.ts'
 import { startSyncJobs } from './services/session-sync.ts'
+
+// Run migrations on startup
+const migrationsFolder = process.env.MIGRATIONS_PATH ?? join(import.meta.dir, '../../../packages/db/migrations')
+migrate(db, { migrationsFolder })
+console.log('Database ready')
 
 const app = new Elysia()
   .use(
     cors({
-      origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+      origin: [
+        process.env.FRONTEND_URL ?? 'http://localhost:3000',
+        'tauri://localhost',
+        'http://tauri.localhost',
+      ],
       credentials: true,
     }),
   )
@@ -27,7 +41,7 @@ const app = new Elysia()
       },
     }),
   )
-  .use(wsTrafficRoute) // WS at /ws/traffic (outside /api group)
+  .use(wsTrafficRoute)
   .get('/health', () => ({ status: 'ok', version: '1.0.0' }))
   .group('/api', (app) =>
     app
@@ -40,7 +54,9 @@ const app = new Elysia()
       .use(sessionRoutes)
       .use(pppRoutes)
       .use(dhcpRoutes)
-      .use(settingsRoutes),
+      .use(settingsRoutes)
+      .use(hotspotAdvancedRoutes)
+      .use(systemRoutes),
   )
   .onError(({ code, error, set }) => {
     if (code === 'VALIDATION') {
@@ -59,5 +75,4 @@ const app = new Elysia()
 console.log(`Mikumon API running at http://localhost:${app.server?.port}`)
 console.log(`Swagger docs: http://localhost:${app.server?.port}/swagger`)
 
-// Start background sync jobs (session polling + expiry detection)
 startSyncJobs()

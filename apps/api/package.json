@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --target bun --outdir dist",
-    "start": "bun run dist/index.js",
-    "test": "bun test",
+    "build": "bun build --compile --target bun-windows-x64 --outfile ../../dist/mikumon-api src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test src/__tests__",
+    "test:watch": "bun test --watch src/__tests__",
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
@@ -18,13 +19,10 @@
     "@mikumon/shared-types": "workspace:*",
     "@mikumon/utils": "workspace:*",
     "@mikumon/validation": "workspace:*",
-    "bcrypt": "^5.1.1",
     "drizzle-orm": "^0.33.0",
-    "elysia": "^1.1.0",
-    "ioredis": "^5.4.1"
+    "elysia": "^1.1.0"
   },
   "devDependencies": {
-    "@types/bcrypt": "^5.0.2",
     "typescript": "^5.5.0"
   }
 }

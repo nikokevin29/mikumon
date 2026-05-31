@@ -13,6 +13,12 @@ export default defineNuxtConfig({
       wsBase: process.env.NUXT_PUBLIC_WS_BASE ?? 'ws://localhost:3001',
     },
   },
+  nitro: {
+    preset: 'static',
+    output: {
+      publicDir: '.output/public',
+    },
+  },
   typescript: {
     strict: true,
   },

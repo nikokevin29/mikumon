@@ -1,10 +1,8 @@
 import { Elysia, t } from 'elysia'
-import { authMiddleware } from '../middleware/auth.ts'
 import { ok, err } from '@mikumon/utils'
 import { loadTelegramConfig, saveTelegramConfig, sendTelegramMessage } from '../services/telegram.ts'
 
 export const settingsRoutes = new Elysia({ prefix: '/settings' })
-  .use(authMiddleware)
   .get('/telegram', () => {
     const cfg = loadTelegramConfig()
     // Mask token for security

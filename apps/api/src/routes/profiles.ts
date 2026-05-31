@@ -2,7 +2,6 @@ import { Elysia, t } from 'elysia'
 import { db, userProfiles, hotspotUsers, routers } from '@mikumon/db'
 import { createProfileSchema, updateProfileSchema } from '@mikumon/validation'
 import { ok, paginated, err, decrypt } from '@mikumon/utils'
-import { authMiddleware } from '../middleware/auth.ts'
 import { eq, count, and } from 'drizzle-orm'
 import { connectToRouter } from '../services/mikrotik.ts'
 
@@ -73,7 +72,6 @@ async function syncProfileToMikrotik(
 }
 
 export const profileRoutes = new Elysia({ prefix: '/profiles' })
-  .use(authMiddleware)
   .get('/', async ({ query }) => {
     const page = Number(query.page ?? 1)
     const limit = Number(query.limit ?? 50)

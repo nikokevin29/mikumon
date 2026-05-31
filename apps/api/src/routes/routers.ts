@@ -2,12 +2,10 @@ import { Elysia, t } from 'elysia'
 import { db, routers } from '@mikumon/db'
 import { createRouterSchema, updateRouterSchema } from '@mikumon/validation'
 import { encrypt, decrypt, ok, paginated, err } from '@mikumon/utils'
-import { authMiddleware } from '../middleware/auth.ts'
 import { eq, count } from 'drizzle-orm'
 import { connectToRouter, fetchRouterStatus, fetchActiveSessions } from '../services/mikrotik.ts'
 
 export const routerRoutes = new Elysia({ prefix: '/routers' })
-  .use(authMiddleware)
   .get('/', async ({ query }) => {
     const page = Number(query.page ?? 1)
     const limit = Number(query.limit ?? 20)
@@ -42,10 +40,20 @@ export const routerRoutes = new Elysia({ prefix: '/routers' })
         await db.update(routers).set({ isDefault: false })
       }
 
-      const [router] = await db
-        .insert(routers)
-        .values({ ...rest, passwordEncrypted })
-        .returning()
+      let router
+      try {
+        ;[router] = await db
+          .insert(routers)
+          .values({ ...rest, passwordEncrypted })
+          .returning()
+      } catch (e: any) {
+        if (e?.message?.includes('UNIQUE') || e?.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+          set.status = 409
+          return err('DUPLICATE', 'Router dengan nama tersebut sudah ada')
+        }
+        set.status = 500
+        return err('SERVER_ERROR', 'Gagal membuat router')
+      }
 
       if (!router) {
         set.status = 500

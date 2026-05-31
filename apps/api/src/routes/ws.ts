@@ -1,6 +1,5 @@
 import { Elysia } from 'elysia'
 import { db, hotspotActiveSessions } from '@mikumon/db'
-import { authMiddleware } from '../middleware/auth.ts'
 import { jwtConfig } from '../middleware/auth.ts'
 import { ok } from '@mikumon/utils'
 import { desc } from 'drizzle-orm'
@@ -31,7 +30,6 @@ async function pushSessions(ws: { send: (data: string) => void }) {
 
 // REST endpoint: current active sessions
 export const sessionRoutes = new Elysia({ prefix: '/sessions' })
-  .use(authMiddleware)
   .get('/', async () => {
     const sessions = await db
       .select()

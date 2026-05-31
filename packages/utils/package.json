@@ -6,7 +6,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "bun test src/**/*.test.ts"
+    "test": "bun test src/__tests__"
   },
   "devDependencies": {
     "typescript": "^5.5.0"

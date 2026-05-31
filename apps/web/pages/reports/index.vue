@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { EChartsOption } from 'echarts'
 
-definePageMeta({ middleware: 'auth' })
-
 const { $api } = useApi()
 
 // Filter state

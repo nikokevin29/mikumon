@@ -1,326 +1,215 @@
-# Mikumon
+# Mikumon — ISP Management Desktop App
 
-Open-source ISP Management Platform — alternatif Mikhmon V3. Kelola router MikroTik, profil hotspot, pengguna, monitoring real-time, dan laporan penjualan voucher dalam satu dashboard.
+Aplikasi desktop untuk manajemen MikroTik RouterOS — pengganti Mikhmon berbasis **Tauri + Bun + Nuxt 3**. Tidak perlu server, tidak perlu browser terpisah — cukup buka `.exe`.
 
-## Status Pengembangan
+## Fitur
 
-| Modul | Status | Keterangan |
-|-------|--------|------------|
-| Auth (login/logout/session) | ✅ Selesai | JWT httpOnly cookie, 30 menit |
-| Routers CRUD | ✅ Selesai | Enkripsi AES-256-GCM, test koneksi |
-| MikroTik RouterOS API Client | ✅ Selesai | Binary protocol TCP port 8728, auth v6/v7 |
-| Router Status Real-time | ✅ Selesai | CPU, memori, uptime, board info dari MikroTik |
-| Profiles CRUD | ✅ Selesai | Limit uptime/bytes, harga, mode expired |
-| Hotspot Users — Generate Voucher | ✅ Selesai | Bulk generate, sync ke MikroTik dengan limits |
-| Hotspot Users — CRUD | ✅ Selesai | List, filter, pagination, delete, bulk delete |
-| Session Sync Service | ✅ Selesai | Polling MikroTik tiap 30 detik, detect first-use |
-| Voucher Lifecycle (usedAt/expiredAt) | ✅ Selesai | Income dicatat saat voucher diaktifkan, bukan saat generate |
-| Expiry Sync | ✅ Selesai | Deteksi voucher expired di MikroTik → update DB |
-| Dashboard | ✅ Selesai | Stat cards, router status panel, sesi aktif terbaru |
-| Sidebar Navigasi | ✅ Selesai | Collapsible, dark mode, active state |
-| Live Monitoring (WebSocket) | ✅ Selesai | Sesi aktif real-time, chart traffic |
-| Laporan Penjualan | ✅ Selesai | Revenue per hari/minggu/bulan, chart |
-| Halaman Hotspot Users | ✅ Selesai | List, filter status, bulk delete, generate voucher |
-| Halaman Profiles | ✅ Selesai | CRUD profil, sync ke MikroTik otomatis saat generate |
-| Print Voucher | ✅ Selesai | Layout picker (2/3/4 per baris), cut marks, logo toggle |
-| PPP Management | ✅ Selesai | List/tambah/hapus PPPoE secrets, lihat & putus sesi aktif |
-| DHCP Leases | ✅ Selesai | Tampilkan leases, jadikan static, hapus |
-| Telegram Notifikasi | ✅ Selesai | Bot notif first-use voucher & router offline, halaman settings |
+### Hotspot Management
+- **Live View** — tampilkan semua user langsung dari MikroTik (termasuk user lama)
+- **Filter** by Profile, Comment (batch dengan jumlah), dan Search
+- **Generate Voucher** — bulk generate user dengan prefix, auto-sync ke MikroTik
+- **Cetak Voucher** — layout 2/3/4 per halaman, cut marks, logo
+- **Export CSV** — export semua user dengan filter
+- **Reset Counter** — reset bytes/uptime counter user di MikroTik
+- **Sync dari MikroTik** — import semua user & profile yang sudah ada ke DB lokal
+- **IP Bindings** — CRUD MAC/IP binding (bypassed/blocked/regular)
+- **Hotspot Hosts** — lihat & hapus host yang terdeteksi
+- **Hotspot Cookies** — lihat & hapus cookie autentikasi
+- **Hotspot Log** — log aktivitas hotspot dari router
+
+### Router Management
+- Multi-router support — kelola beberapa MikroTik sekaligus
+- Status real-time — CPU load, memory, uptime, versi RouterOS
+- Test koneksi langsung dari UI
+- **Reboot / Shutdown** router dari UI
+- Password dienkripsi AES-256-GCM di DB lokal
+
+### Network
+- **PPP Management** — CRUD PPPoE secrets, lihat & putus sesi aktif
+- **DHCP Leases** — lihat lease, jadikan static, hapus
+
+### System
+- **Scheduler** — kelola system scheduler MikroTik (enable/disable/hapus/lihat script)
+
+### Monitoring & Laporan
+- **Live Monitoring** — WebSocket real-time sesi aktif, chart traffic top 10, disconnect sesi
+- **Laporan Penjualan** — grafik revenue harian/mingguan/bulanan per router
+
+### Pengaturan
+- Telegram notifikasi — alert saat voucher pertama kali dipakai & router offline
+
+---
 
 ## Tech Stack
 
 | Layer | Teknologi |
 |-------|-----------|
-| Frontend | Nuxt 3 (SPA), Vue 3, @nuxt/ui v2, Pinia |
-| Backend | Bun, Elysia, JWT (httpOnly cookie) |
-| Database | PostgreSQL 16, Drizzle ORM |
-| Cache | Redis 7 |
-| Monorepo | Turborepo, pnpm workspaces |
-| Charts | vue-echarts v7 + echarts v5 |
+| **Desktop** | [Tauri v2](https://tauri.app) (Rust) |
+| **Frontend** | [Nuxt 3](https://nuxt.com) + Vue 3, [@nuxt/ui](https://ui.nuxt.com), Pinia, ECharts, VueUse |
+| **Backend** | [Bun](https://bun.sh) runtime + [Elysia](https://elysiajs.com) |
+| **Database** | SQLite via `bun:sqlite` + [Drizzle ORM](https://orm.drizzle.team) |
+| **Validasi** | [Zod](https://zod.dev) |
+| **MikroTik API** | Custom binary protocol client (port 8728, RouterOS v6.43+ & v7.x) |
+| **Enkripsi** | AES-256-GCM (router password), `Bun.password` (auth hash) |
+| **Build** | [Turborepo](https://turbo.build) + pnpm workspaces |
+| **Testing** | Bun test — 71 test cases |
 
-## Fitur
+---
 
-- **Auth** — Login admin, session JWT via httpOnly cookie (30 menit), auto-redirect
-- **Routers** — CRUD router MikroTik, test koneksi real (RouterOS API), enkripsi password (AES-256-GCM), status real-time inline (CPU, memori, uptime, board info)
-- **MikroTik API** — Koneksi langsung ke RouterOS via binary protocol port 8728 (mendukung v6.43+ dan v7.x)
-- **Profiles** — Manajemen profil hotspot per router (harga, durasi, bandwidth, mode expired)
-- **Hotspot Users** — Generate voucher bulk dengan limit-uptime/bytes, sync ke MikroTik; print voucher dengan layout picker, cut marks, logo toggle
-- **Voucher Lifecycle** — Deteksi first-use via session polling, income dicatat saat aktivasi, deteksi expired otomatis
-- **PPP Management** — Daftar, tambah, hapus PPPoE secrets; monitor dan putus sesi PPPoE aktif
-- **DHCP Leases** — Tampilkan semua DHCP lease per router, jadikan static, hapus
-- **Telegram Notifikasi** — Bot notif otomatis: voucher diaktifkan (first-use) dan router tidak bisa dijangkau; konfigurasi via halaman settings
-- **Live Monitoring** — Sesi hotspot aktif real-time via WebSocket, chart traffic top-10
-- **Laporan Penjualan** — Revenue per hari/minggu/bulan, breakdown per router, bar chart
-- **Dashboard** — Stat cards berwarna, panel status router (CPU/memori/uptime), sesi terbaru, akses cepat
-
-## Struktur Proyek
+## Struktur Project
 
 ```
 mikumon/
 ├── apps/
-│   ├── api/                    # Bun + Elysia REST API + WebSocket
+│   ├── api/          # Bun + Elysia REST API + WebSocket (port 3001)
 │   │   └── src/
-│   │       ├── routes/         # auth, routers, profiles, hotspot, ppp, dhcp, settings, stats, reports, ws
-│   │       ├── services/
-│   │       │   ├── mikrotik.ts       # RouterOS API binary protocol client
-│   │       │   ├── telegram.ts       # Bot Telegram: notif first-use & router offline
-│   │       │   └── session-sync.ts   # Background sync: sessions + expiry detection
-│   │       └── middleware/
-│   └── web/                    # Nuxt 3 SPA admin panel
-│       ├── components/
-│       │   └── AppSidebar.vue  # Collapsible sidebar navigasi
-│       ├── layouts/
-│       └── pages/
-├── packages/
-│   ├── db/                     # Drizzle ORM schema, migrations, seed
-│   ├── shared-types/           # TypeScript types bersama
-│   ├── validation/             # Zod schemas bersama
-│   └── utils/                  # Helper: enkripsi, generator, response
-├── docker-compose.yml
-└── turbo.json
+│   │       ├── routes/       # auth, routers, hotspot, ppp, dhcp, system, ...
+│   │       ├── services/     # mikrotik client, session-sync, telegram
+│   │       └── __tests__/    # test routes & services
+│   ├── web/          # Nuxt 3 SPA → static build untuk Tauri webview
+│   │   └── pages/
+│   │       ├── hotspot/      # users, vouchers, ip-bindings, hosts, cookies, log
+│   │       ├── system/       # scheduler
+│   │       ├── monitoring/   # live sessions
+│   │       └── ...
+│   └── desktop/      # Tauri project
+│       └── src-tauri/
+│           ├── src/          # Rust: spawn sidecar, window setup
+│           ├── binaries/     # compiled Bun backend (.exe sidecar)
+│           └── migrations/   # SQLite migrations (copied at build)
+└── packages/
+    ├── db/           # Drizzle schema + SQLite client + migrations
+    ├── utils/        # encrypt/decrypt, generators, response helpers
+    └── validation/   # Zod schemas (shared antara API dan frontend)
 ```
 
-## Prasyarat
+---
 
-- [Node.js](https://nodejs.org) >= 20
-- [Bun](https://bun.sh) >= 1.0
-- [pnpm](https://pnpm.io) >= 9
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+## Build Desktop App
 
-## Setup Development
+### Prasyarat
 
-### 1. Clone & install dependencies
+- [Bun](https://bun.sh) v1.x
+- [Rust](https://rustup.rs) stable (+ cargo)
+- [pnpm](https://pnpm.io) v9
+- Visual Studio Build Tools (Windows) — untuk Tauri
+
+### Install dependencies
 
 ```bash
-git clone https://github.com/nikokevin29/mikumon.git
-cd mikumon
 pnpm install
 ```
 
-### 2. Konfigurasi environment
+### Build semua sekaligus
 
 ```bash
-# Buat file env untuk API
-cp .env.example apps/api/.env
-
-# Buat file env untuk Web
-echo "NUXT_PUBLIC_API_BASE=http://localhost:3001/api" > apps/web/.env
-echo "NUXT_PUBLIC_WS_BASE=ws://localhost:3001" >> apps/web/.env
+pnpm build:desktop
 ```
 
-Edit `apps/api/.env` dan sesuaikan nilai berikut:
+Menjalankan secara berurutan:
+1. `pnpm build:api` — compile Bun backend ke `.exe` sidecar
+2. `pnpm build:web` — Nuxt static generate
+3. `pnpm build:tauri` — build Tauri installer
 
-```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/mikumon
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=ganti-dengan-secret-panjang-acak
-ENCRYPTION_KEY=ganti-dengan-32-karakter-tepat!!
-API_PORT=3001
+**Output:**
+```
+apps/desktop/src-tauri/target/release/bundle/
+├── nsis/Mikumon_1.0.0_x64-setup.exe   ← installer (direkomendasikan)
+└── msi/Mikumon_1.0.0_x64_en-US.msi
 ```
 
-> **Penting:** `ENCRYPTION_KEY` harus tepat 32 karakter — digunakan untuk enkripsi password router.
+Atau jalankan `.exe` langsung tanpa install:
+```
+apps/desktop/src-tauri/target/release/mikumon.exe
+```
 
-### 3. Jalankan PostgreSQL + Redis
+> Saat pertama dijalankan, app otomatis:
+> - Membuat database di `%APPDATA%\com.mikumon.app\mikumon.db`
+> - Menjalankan migrations
+> - Spawn backend API di background (port 3001)
+
+---
+
+## Cara Penggunaan
+
+### 1. Tambah Router
+**Routers** → **Tambah Router** → isi Nama, IP Address, Username, Password MikroTik → Simpan → klik **Test Koneksi** untuk verifikasi
+
+### 2. Lihat User Hotspot
+**Hotspot > Daftar User** → pilih router → data muncul langsung dari MikroTik
+
+**Import user lama:** klik **Sync dari MikroTik** — semua user & profile yang sudah ada di router akan diimport ke DB lokal
+
+### 3. Filter User
+| Filter | Fungsi |
+|--------|--------|
+| **Profile** | Filter by profil bandwidth (3M_48h, 5M_30d, dll) |
+| **Comment** | Filter by batch voucher, format: `nama-batch [jumlah]` |
+| **Search** | Cari username atau comment |
+
+### 4. Generate Voucher
+**Hotspot > Daftar User** → **Generate** → pilih profile → tentukan jumlah & prefix → Generate  
+→ Otomatis redirect ke halaman cetak
+
+### 5. Monitor Live
+**Live Monitoring** — sesi aktif ter-update setiap 5 detik via WebSocket. Klik ✕ untuk disconnect sesi.
+
+### 6. Reboot / Shutdown Router
+**Routers** → expand status panel router → tombol **Reboot** atau **Shutdown**
+
+---
+
+## Development
 
 ```bash
-# Start hanya database (bukan seluruh stack)
-docker compose up -d postgres redis
+# Backend dengan hot reload
+pnpm dev:api
+
+# Frontend dev server
+pnpm dev:web
+
+# Buka browser → http://localhost:3000
 ```
 
-### 4. Migrasi database & seed admin
+### Testing
 
 ```bash
-cd packages/db
-pnpm db:push    # apply schema ke PostgreSQL
-pnpm db:seed    # buat akun admin default
+# Test utils
+pnpm --filter @mikumon/utils test
+
+# Test API (in-memory SQLite + mock MikroTik)
+pnpm --filter @mikumon/api test
 ```
 
-Akun admin default:
-- **Email:** `admin@mikumon.local`
-- **Password:** `admin123`
-
-> Ganti password setelah login pertama!
-
-Untuk custom akun seed, tambahkan ke `apps/api/.env`:
-```env
-ADMIN_EMAIL=email@kamu.com
-ADMIN_PASSWORD=passwordkuat
-ADMIN_NAME=Nama Admin
+Output:
+```
+packages/utils: 34 pass, 0 fail
+apps/api:       37 pass, 0 fail
+Total:          71 pass, 0 fail
 ```
 
-### 5. Jalankan semua app
+### Database
 
 ```bash
-# Kembali ke root
-cd ../..
-pnpm dev
+# Generate migration baru setelah ubah schema
+pnpm db:generate
+
+# Jalankan migrations manual
+pnpm db:migrate
 ```
 
-| App | URL |
-|-----|-----|
-| Frontend | http://localhost:3000 |
-| API | http://localhost:3001 |
-| Swagger docs | http://localhost:3001/swagger |
-| Health check | http://localhost:3001/health |
+---
 
-## API Endpoints
+## Perbandingan dengan Mikhmon v3
 
-### Auth
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| POST | `/api/auth/login` | Login admin |
-| POST | `/api/auth/logout` | Logout |
-| GET | `/api/auth/me` | Info admin yang login |
-
-### Routers
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/routers` | Daftar router |
-| POST | `/api/routers` | Tambah router |
-| PUT | `/api/routers/:id` | Edit router |
-| DELETE | `/api/routers/:id` | Hapus router |
-| POST | `/api/routers/:id/test` | Test koneksi MikroTik (real API auth) |
-| GET | `/api/routers/:id/status` | Status real-time router (CPU, memori, uptime) |
-| GET | `/api/routers/:id/active` | Sesi aktif langsung dari MikroTik |
-
-### Profiles
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/profiles` | Daftar profil (filter: `?router_id=`) |
-| POST | `/api/profiles` | Tambah profil |
-| PUT | `/api/profiles/:id` | Edit profil |
-| DELETE | `/api/profiles/:id` | Hapus profil |
-
-### Hotspot Users
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/hotspot/users` | Daftar user (filter, pagination) |
-| POST | `/api/hotspot/users/generate` | Generate voucher bulk + sync ke MikroTik |
-| GET | `/api/hotspot/users/:id` | Detail user |
-| PUT | `/api/hotspot/users/:id` | Update user |
-| DELETE | `/api/hotspot/users/:id` | Hapus user |
-| DELETE | `/api/hotspot/users` | Hapus bulk (`{ ids: [] }`) |
-
-### PPP Management
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/ppp/secrets?routerId=` | Daftar PPPoE secrets |
-| POST | `/api/ppp/secrets` | Tambah PPPoE secret |
-| DELETE | `/api/ppp/secrets/:id?routerId=` | Hapus PPPoE secret |
-| GET | `/api/ppp/active?routerId=` | Sesi PPPoE aktif |
-| DELETE | `/api/ppp/active/:id?routerId=` | Putus sesi PPPoE |
-
-### DHCP Leases
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/dhcp/leases?routerId=` | Daftar DHCP leases |
-| POST | `/api/dhcp/leases/:id/make-static?routerId=` | Jadikan lease static |
-| DELETE | `/api/dhcp/leases/:id?routerId=` | Hapus lease |
-
-### Settings (Telegram)
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/settings/telegram` | Ambil konfigurasi Telegram (token disamarkan) |
-| PUT | `/api/settings/telegram` | Simpan konfigurasi Telegram |
-| POST | `/api/settings/telegram/test` | Kirim pesan test ke bot |
-
-### Monitoring & Reports
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| GET | `/api/sessions` | Sesi aktif dari DB (REST) |
-| WS | `/ws/traffic` | Sesi aktif real-time (WebSocket) |
-| GET | `/api/stats` | Statistik ringkasan dashboard |
-| GET | `/api/reports/sales` | Laporan penjualan (`?start=&end=&group_by=day\|week\|month`) |
-
-## Arsitektur Voucher Lifecycle
-
-Berbeda dari Mikhmon yang menyimpan semua data di MikroTik RouterOS, Mikumon menggunakan PostgreSQL sebagai sumber kebenaran dengan sinkronisasi dua arah:
-
-```
-Generate Voucher
-  └─► DB hotspot_users (username, password, profileId)
-  └─► MikroTik /ip/hotspot/user/add (+ limit-uptime, limit-bytes-total)
-
-Session Sync (tiap 30 detik)
-  └─► Poll MikroTik /ip/hotspot/active/print
-  └─► Upsert DB hotspot_active_sessions
-  └─► First-use detected → set hotspot_users.used_at
-  └─► Create salesRecords (income dicatat saat aktivasi, bukan saat generate)
-  └─► Kirim notif Telegram: "Voucher <user> diaktifkan (profil: X, router: Y)"
-
-Expiry Sync (tiap 5 menit)
-  └─► Poll MikroTik /ip/hotspot/user/print
-  └─► User hilang dari MikroTik → set hotspot_users.is_active=false, expired_at
-  └─► Router tidak bisa dijangkau → Kirim notif Telegram: "Router offline"
-```
-
-## Deploy dengan Docker
-
-### Full stack (semua service)
-
-```bash
-# Buat file .env di root untuk secrets
-cp .env.example .env
-# Edit .env — isi JWT_SECRET dan ENCRYPTION_KEY
-
-docker compose up -d
-```
-
-### Hanya database (development)
-
-```bash
-docker compose up -d postgres redis
-```
-
-### Hentikan semua
-
-```bash
-docker compose down
-# Hapus data juga:
-docker compose down -v
-```
-
-## Scripts
-
-```bash
-pnpm dev          # Jalankan semua app (turbo)
-pnpm build        # Build semua app
-pnpm test         # Jalankan semua tests
-pnpm format       # Format kode dengan Prettier
-pnpm lint         # Lint semua app
-
-# Database (dari packages/db)
-pnpm db:push      # Apply schema (dev)
-pnpm db:generate  # Generate migration files
-pnpm db:migrate   # Jalankan migrations
-pnpm db:studio    # Buka Drizzle Studio (DB GUI)
-pnpm db:seed      # Buat admin default
-```
-
-## Variabel Environment
-
-### `apps/api/.env`
-
-| Variabel | Default | Keterangan |
-|----------|---------|------------|
-| `DATABASE_URL` | — | PostgreSQL connection string |
-| `REDIS_URL` | — | Redis connection string |
-| `JWT_SECRET` | — | Secret untuk JWT (min 32 karakter) |
-| `ENCRYPTION_KEY` | — | Key enkripsi router password (**tepat 32 karakter**) |
-| `API_PORT` | `3001` | Port API server |
-| `API_HOST` | `0.0.0.0` | Host API server |
-| `MIKROTIK_TIMEOUT` | `30000` | Timeout koneksi MikroTik (ms) |
-| `ADMIN_EMAIL` | `admin@mikumon.local` | Email admin seed |
-| `ADMIN_PASSWORD` | `admin123` | Password admin seed |
-| `ADMIN_NAME` | `Administrator` | Nama admin seed |
-
-### `apps/web/.env`
-
-| Variabel | Default | Keterangan |
-|----------|---------|------------|
-| `NUXT_PUBLIC_API_BASE` | `http://localhost:3001/api` | URL API backend |
-| `NUXT_PUBLIC_WS_BASE` | `ws://localhost:3001` | URL WebSocket backend |
-
-## Lisensi
-
-MIT
+| | Mikhmon v3 | Mikumon |
+|--|-----------|---------|
+| **Stack** | PHP + jQuery | Bun + Nuxt 3 + Tauri |
+| **Deployment** | Web server (Nginx + PHP-FPM) | Desktop app (.exe) |
+| **Database** | Tidak ada | SQLite lokal |
+| **PPP Management** | Tidak diimplementasi | Lengkap |
+| **Laporan** | Script di MikroTik | DB lokal, chart |
+| **Real-time** | Polling AJAX | WebSocket |
+| **Notifikasi** | Tidak ada | Telegram |
+| **Testing** | Tidak ada | 71 test cases |
+| **Auth** | Login required | Local mode, no login |

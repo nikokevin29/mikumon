@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { useAuthStore } from '../stores/auth'
-
-const authStore = useAuthStore()
 const route = useRoute()
 
 const open = ref<Record<string, boolean>>({
   hotspot: true,
   hotspotUsers: false,
+  hotspotAdvanced: false,
   network: false,
+  system: false,
 })
 
 function toggle(key: string) {
@@ -63,6 +62,7 @@ const inactiveSub = 'text-gray-400 hover:bg-gray-700/60 hover:text-white'
         </button>
 
         <div v-show="open.hotspot" class="ml-3 mt-0.5 pl-3 border-l border-gray-700 space-y-0.5">
+
           <!-- Users sub-group -->
           <button
             class="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-700/60"
@@ -109,6 +109,45 @@ const inactiveSub = 'text-gray-400 hover:bg-gray-700/60 hover:text-white'
               <span>Hotspot Aktif</span>
             </div>
           </NuxtLink>
+
+          <!-- Advanced sub-group -->
+          <button
+            class="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-colors hover:bg-gray-700/60"
+            :class="isGroupActive(['/hotspot/ip-bindings', '/hotspot/hosts', '/hotspot/cookies', '/hotspot/log']) ? 'text-white' : 'text-gray-400'"
+            @click="toggle('hotspotAdvanced')"
+          >
+            <UIcon name="i-heroicons-adjustments-horizontal" class="w-3.5 h-3.5 shrink-0" />
+            <span class="flex-1 text-left">Advanced</span>
+            <UIcon name="i-heroicons-chevron-down" class="w-3 h-3 transition-transform duration-200" :class="open.hotspotAdvanced ? 'rotate-180' : ''" />
+          </button>
+
+          <div v-show="open.hotspotAdvanced" class="ml-3 pl-3 border-l border-gray-700/60 space-y-0.5">
+            <NuxtLink to="/hotspot/ip-bindings">
+              <div :class="[navLinkSubSub, isActive('/hotspot/ip-bindings') ? activeSub : inactiveSub]">
+                <UIcon name="i-heroicons-link" class="w-3.5 h-3.5 shrink-0" />
+                <span>IP Bindings</span>
+              </div>
+            </NuxtLink>
+            <NuxtLink to="/hotspot/hosts">
+              <div :class="[navLinkSubSub, isActive('/hotspot/hosts') ? activeSub : inactiveSub]">
+                <UIcon name="i-heroicons-computer-desktop" class="w-3.5 h-3.5 shrink-0" />
+                <span>Hosts</span>
+              </div>
+            </NuxtLink>
+            <NuxtLink to="/hotspot/cookies">
+              <div :class="[navLinkSubSub, isActive('/hotspot/cookies') ? activeSub : inactiveSub]">
+                <UIcon name="i-heroicons-cake" class="w-3.5 h-3.5 shrink-0" />
+                <span>Cookies</span>
+              </div>
+            </NuxtLink>
+            <NuxtLink to="/hotspot/log">
+              <div :class="[navLinkSubSub, isActive('/hotspot/log') ? activeSub : inactiveSub]">
+                <UIcon name="i-heroicons-document-text" class="w-3.5 h-3.5 shrink-0" />
+                <span>Log</span>
+              </div>
+            </NuxtLink>
+          </div>
+
         </div>
       </div>
 
@@ -148,6 +187,28 @@ const inactiveSub = 'text-gray-400 hover:bg-gray-700/60 hover:text-white'
         </div>
       </div>
 
+      <!-- System group -->
+      <div>
+        <button
+          class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-gray-700/60"
+          :class="isGroupActive(['/system']) ? 'text-white' : 'text-gray-300'"
+          @click="toggle('system')"
+        >
+          <UIcon name="i-heroicons-cpu-chip" class="w-4 h-4 shrink-0" />
+          <span class="flex-1 text-left">System</span>
+          <UIcon name="i-heroicons-chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" :class="open.system ? 'rotate-180' : ''" />
+        </button>
+
+        <div v-show="open.system" class="ml-3 mt-0.5 pl-3 border-l border-gray-700 space-y-0.5">
+          <NuxtLink to="/system/scheduler">
+            <div :class="[navLinkSub, isActive('/system/scheduler') ? activeSub : inactiveSub]">
+              <UIcon name="i-heroicons-clock" class="w-3.5 h-3.5 shrink-0" />
+              <span>Scheduler</span>
+            </div>
+          </NuxtLink>
+        </div>
+      </div>
+
       <!-- Divider -->
       <div class="pt-1 pb-1">
         <div class="border-t border-gray-700/60" />
@@ -179,19 +240,9 @@ const inactiveSub = 'text-gray-400 hover:bg-gray-700/60 hover:text-white'
 
     </nav>
 
-    <!-- User + Logout -->
-    <div class="px-3 py-3 border-t border-gray-700/60">
-      <div class="px-2 py-1.5 mb-2">
-        <p class="text-sm font-medium text-white truncate">{{ authStore.user?.name }}</p>
-        <p class="text-xs text-gray-400 truncate">{{ authStore.user?.email }}</p>
-      </div>
-      <button
-        class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-400 hover:bg-gray-700/60 hover:text-white transition-colors"
-        @click="authStore.logout()"
-      >
-        <UIcon name="i-heroicons-arrow-right-on-rectangle" class="w-4 h-4" />
-        <span>Logout</span>
-      </button>
+    <!-- Footer -->
+    <div class="px-4 py-3 border-t border-gray-700/60">
+      <p class="text-xs text-gray-500">v1.0.0 · Local Mode</p>
     </div>
   </aside>
 </template>

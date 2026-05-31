@@ -1,6 +1,5 @@
 import { db, admins } from '../index.ts'
 import { eq } from 'drizzle-orm'
-import bcrypt from 'bcrypt'
 
 async function seed() {
   const email = process.env.ADMIN_EMAIL ?? 'admin@mikumon.local'
@@ -14,7 +13,7 @@ async function seed() {
     process.exit(0)
   }
 
-  const passwordHash = await bcrypt.hash(password, 12)
+  const passwordHash = await Bun.password.hash(password)
   const [admin] = await db.insert(admins).values({ email, name, passwordHash }).returning()
 
   console.log(`Admin berhasil dibuat:`)

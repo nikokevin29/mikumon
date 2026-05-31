@@ -1,6 +1,4 @@
 <script setup lang="ts">
-definePageMeta({ middleware: 'auth' })
-
 const voucherStore = useVoucherStore()
 const router = useRouter()
 
